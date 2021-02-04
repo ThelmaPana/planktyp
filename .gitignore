@@ -1,0 +1,7 @@
+.Rhistory
+/plots/*
+/data/*.feather
+/data/*.Rdata
+/data/extract_zoo/projects/*
+/data/ignore/*
+.Rproj.user
