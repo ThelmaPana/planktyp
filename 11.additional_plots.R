@@ -106,6 +106,19 @@ tricho %>%
 ggsave("plots/zoo/11.histo_depth_tricho.png") 
 
 
+## Check watervolumes ----
+#--------------------------------------------------------------------------#
+summary(part_conc$watervolume)
+# max watervolume is > 25000. This seems wrong
+part_conc %>% filter(watervolume > 500) # 212 bins with watervolume > 500
+part_conc %>% filter(watervolume > 1000) # 93 bins with watervolume > 500
+
+part_conc %>% 
+  ggplot() +
+  geom_histogram(aes(x = watervolume), binwidth = 100) +
+  scale_y_continuous(trans = "log1p")
+
+
 ## Map of projects ----
 #--------------------------------------------------------------------------#
 

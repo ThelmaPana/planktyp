@@ -6,7 +6,10 @@ Thelma Panaïotis M2 internship
 January 2019 - June 2019
 Laboratoire d’Océanographie de Villefranche (UMR 7093)
 
-
+## TODOs
+- [ ] check Trichodesmium below 500 m
+- [ ] check high watervolumes
+ 
 ## Organisation of repository
 ### Folders
 - `lib` contains scripts called when needed
