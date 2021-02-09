@@ -55,14 +55,13 @@ det <- o %>%
   ungroup() %>% 
   arrange(title, profile, depth, taxon)
 
-## parts: all objects, used as environmental descriptor of global richness
-#part <- o %>%
-#  select(title, profile, lat, lon, depth, taxon=group) %>% 
-#  mutate(taxon = "part") %>% 
-#  group_by(title, profile, lat, lon, depth, taxon) %>% 
-#  summarise(abund = n()) %>% 
-#  ungroup() %>% 
-#  arrange(title, profile, depth, taxon)
+
+## Delete Trichodesmium below 500 m ----
+#--------------------------------------------------------------------------#
+# After inspections, these objects are nor puffs neither tuffs
+deep_tricho <- zoo %>% filter(taxon == "Trichodesmium" & depth > 500) 
+zoo <- zoo %>% filter(!(taxon == "Trichodesmium" & depth > 500))
+message("Removed ", sum(deep_tricho$abund), " deep Trichodesmiums (below 500 m)")
 
 
 ## Extract particles data along with sampled bins ----
