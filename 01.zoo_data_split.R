@@ -6,7 +6,6 @@
 #--------------------------------------------------------------------------#
 
 # TODO: check beginning depth of profiles (Tara)
-# TODO: extract all particles for bulk data, not only > 600 μm
 
 source("lib/set_up.R")
 library(feather)
@@ -18,7 +17,7 @@ library(ecotaxar)
 o <- read_feather("data/00.all_zoo.feather")
 
 # Keep only useful columns
-o <- o %>% select(title, profile, sampleid, lat, lon, depth, taxon, lineage, group, group_lineage)
+o <- o %>% select(title, profile, sampleid, lat, lon, depth=mid_depth_bin, taxon, lineage, group, group_lineage)
 # List taxonomy
 o_taxon <- o %>% select(taxon, group) %>% unique() %>% arrange(taxon)
 
@@ -64,7 +63,6 @@ det <- o %>%
 #  summarise(abund = n()) %>% 
 #  ungroup() %>% 
 #  arrange(title, profile, depth, taxon)
-
 
 
 ## Extract particles data along with sampled bins ----
