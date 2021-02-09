@@ -85,6 +85,10 @@ parts <- tbl(db, "part_histopart_reduit") %>%
   left_join(o %>% select(title, profile, sampleid, psampleid, lat, lon) %>% unique()) %>%  # add title, profile name and coordinates
   select(title, profile, lat, lon, sampleid, everything()) # reorder columns
 
+# Ignore bins with large watervolumes (> 500)
+message(sum(parts$watervolume > 500), " bins with watervolume > 500, remove them")
+parts <- parts %>% filter(watervolume <= 500)
+
 # Sum abundances and biovolumes over size classes and compute concentrations
 part_conc <- parts %>% 
   mutate(
