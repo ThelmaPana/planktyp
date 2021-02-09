@@ -64,9 +64,6 @@ env_proj <- as.data.frame(ef$vectors$arrows*sqrt(ef$vectors$r)) %>%
   as_tibble() %>% 
   mutate(orig = 0)
 
-# With FactoMineR
-#PCA(zoo_hel, scale.unit = FALSE)
-
 
 ## Clustering of zoo profiles ----
 #--------------------------------------------------------------------------#
@@ -456,7 +453,7 @@ clust_env <- hclust(env_euc_dist, method = "ward.D2")
 png(file = "plots/analysis/epi/07.env_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_env, main = "Cluster dendrogram env data epipelagic layer")
 # Choose number of clusters
-nclust <- 12
+nclust <- 15
 # Plot clusters
 rect.hclust(clust_env, k=nclust)
 dev.off()
@@ -479,7 +476,7 @@ message(nrow(counts), " profiles left")
 #--------------------------------------------------------------------------#
 # Compute a random group for null model (12 groups)
 counts <- counts %>% 
-  mutate(mod_null = factor(sample(c(1:12), nrow(.), replace = TRUE)))
+  mutate(mod_null = factor(sample(c(1:15), nrow(.), replace = TRUE)))
 
 
 ## Plot number of profiles per partitioning modalities ----
