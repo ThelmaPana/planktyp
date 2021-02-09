@@ -42,9 +42,8 @@ env <- select(subset, temp:kd490) %>%
 
 # Extract zooplankton
 zoo <- select(subset, Acantharea:Trichodesmium)
-# Ignore classes with only zeros
+# Checj classes with only zeros
 cat("Groups with no organisms for this layer:", zoo[colSums(zoo) == 0] %>% names)
-zoo <- zoo %>% select_if(colSums(.) != 0)
 
 # Hellinger transformation
 zoo_hel <- tibble(decostand(zoo, "hellinger"))

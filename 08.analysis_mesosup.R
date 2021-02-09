@@ -21,9 +21,17 @@ study_layer <- "mesosup"
 subset <- all_data %>% filter(layer == study_layer)
 message(nrow(subset), " profiles in mesosup layer")
 
-# Minimum number of profiles per regionalisation modality
-n_min <- 25
+# Minimum number of profiles per regionalisation modality and targeted number of clusters
+#n_min <- 50
+#n_target_max <- 11
+#n_target_env <- 15
+#n_target_null <- 7
 
+n_min <- 25
+n_target_max <- 10
+n_target_env <- 14
+n_target_null <- 9
+  
 
 ## Prepare data ----
 #--------------------------------------------------------------------------#
@@ -397,7 +405,7 @@ message("We should aim for ~ 12 modalities in other partitionings.")
 png(file = "plots/analysis/mesosup/08.plankton_dendrogram_max_model.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer for max model")
 # Choose number of clusters
-nclust <- 12
+nclust <- n_target_max
 # Plot clusters
 rect.hclust(clust_zoo, k=nclust)
 dev.off()
@@ -467,7 +475,7 @@ clust_env <- hclust(env_euc_dist, method = "ward.D2")
 png(file = "plots/analysis/mesosup/08.env_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_env, main = "Cluster dendrogram env data mesosup layer")
 # Choose number of clusters
-nclust <- 15 # target a little higher to have enough groups after ignoring groups with not enough profiles 
+nclust <- n_target_env # target a little higher to have enough groups after ignoring groups with not enough profiles 
 # Plot clusters
 rect.hclust(clust_env, k=nclust)
 dev.off()
@@ -488,9 +496,9 @@ message(nrow(counts), " profiles left")
 
 ## Generate random groups for a null model ----
 #--------------------------------------------------------------------------#
-# Compute a random group for null model (12 groups)
+# Compute a random group for null model (7 groups)
 counts <- counts %>% 
-  mutate(mod_null = factor(sample(c(1:12), nrow(.), replace = TRUE)))
+  mutate(mod_null = factor(sample(c(1:n_target_null), nrow(.), replace = TRUE)))
 
 
 ## Plot number of profiles per partitioning modalities ----
