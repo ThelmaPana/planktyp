@@ -42,9 +42,8 @@ env <- select(subset, temp:kd490) %>%
 
 # Extract zooplankton
 zoo <- select(subset, Acantharea:Trichodesmium)
-# Ignore classes with only zeros
+# Check classes with only zeros
 cat("Groups with no organisms for this layer:", zoo[colSums(zoo) == 0] %>% names)
-zoo <- zoo %>% select_if(colSums(.) != 0)
 
 # Hellinger transformation
 zoo_hel <- tibble(decostand(zoo, "hellinger"))
@@ -63,9 +62,6 @@ env_proj <- as.data.frame(ef$vectors$arrows*sqrt(ef$vectors$r)) %>%
   rownames_to_column(var = "variable") %>% 
   as_tibble() %>% 
   mutate(orig = 0)
-
-# With FactoMineR
-#PCA(zoo_hel, scale.unit = FALSE)
 
 
 ## Clustering of zoo profiles ----
@@ -401,7 +397,7 @@ message("We should aim for ~ 12 modalities in other partitionings.")
 png(file = "plots/analysis/mesosup/08.plankton_dendrogram_max_model.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer for max model")
 # Choose number of clusters
-nclust <- 15
+nclust <- 12
 # Plot clusters
 rect.hclust(clust_zoo, k=nclust)
 dev.off()
@@ -471,7 +467,7 @@ clust_env <- hclust(env_euc_dist, method = "ward.D2")
 png(file = "plots/analysis/mesosup/08.env_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_env, main = "Cluster dendrogram env data mesosup layer")
 # Choose number of clusters
-nclust <- 12
+nclust <- 15 # target a little higher to have enough groups after ignoring groups with not enough profiles 
 # Plot clusters
 rect.hclust(clust_env, k=nclust)
 dev.off()
