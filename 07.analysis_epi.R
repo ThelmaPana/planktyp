@@ -22,8 +22,15 @@ subset <- all_data %>% filter(layer == study_layer)
 message(nrow(subset), " profiles in epipelagic layer")
 
 # Minimum number of profiles per regionalisation modality
-n_min <- 50
+#n_min <- 50
+n_target_max <- 13
+n_target_env <- 15
+n_target_null <- 12
 
+#n_min <- 25
+#n_target_max <- 15
+#n_target_env <- 15
+#n_target_null <- 15
 
 ## Prepare data ----
 #--------------------------------------------------------------------------#
@@ -381,7 +388,7 @@ message("We should aim for ~ 12 modalities in other partitionings.")
 png(file = "plots/analysis/epi/07.plankton_dendrogram_max_model.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_zoo, main = "Cluster dendrogram on plankton data in epipelagic layer for max model")
 # Choose number of clusters
-nclust <- 13
+nclust <- n_target_max
 # Plot clusters
 rect.hclust(clust_zoo, k=nclust)
 dev.off()
@@ -452,7 +459,7 @@ clust_env <- hclust(env_euc_dist, method = "ward.D2")
 png(file = "plots/analysis/epi/07.env_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
 plot(clust_env, main = "Cluster dendrogram env data epipelagic layer")
 # Choose number of clusters
-nclust <- 15
+nclust <- n_target_env
 # Plot clusters
 rect.hclust(clust_env, k=nclust)
 dev.off()
@@ -475,7 +482,7 @@ message(nrow(counts), " profiles left")
 #--------------------------------------------------------------------------#
 # Compute a random group for null model (12 groups)
 counts <- counts %>% 
-  mutate(mod_null = factor(sample(c(1:12), nrow(.), replace = TRUE)))
+  mutate(mod_null = factor(sample(c(1:n_target_null), nrow(.), replace = TRUE)))
 
 
 ## Plot number of profiles per partitioning modalities ----
