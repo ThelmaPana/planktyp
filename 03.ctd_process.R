@@ -403,8 +403,8 @@ rm(ctd_smooth, ctd_1m)
 #--------------------------------------------------------------------------#
 # Run in parallel
 ctd_5m <- ctd_int %>%
-  mutate(depth = roundp(depth + 1.2, 5, f=round) + 2.5) %>% # add 1.2 m to depth to account for distance between CTD and UVP and compute closest 5 m bin
-  #mutate(depth = roundp(depth, 5, f=round) + 2.5) %>%
+  #mutate(depth = roundp(depth + 1.2, 5, f=round) + 2.5) %>% # add 1.2 m to depth to account for distance between CTD and UVP and compute closest 5 m bin
+  mutate(depth = roundp(depth, 5, f=round) + 2.5) %>% # compute closest 5 m bin
   group_by(title, profile, lat, lon, datetime, psampleid, depth) %>%
   partition(cluster) %>% 
   summarise_all(list(mean), na.rm = T) %>%
