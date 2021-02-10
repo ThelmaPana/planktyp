@@ -240,9 +240,39 @@ cce_taxa <- cce_epi %>%
   slice(1:5) 
 cce_taxa
 
-cce_epi %>% 
+# Keep only data from these taxa
+cce_epi <- cce_epi %>% 
   gather(Acantharea:Trichodesmium, key = "taxon", value = "conc") %>% 
-  filter(taxon %in% cce_taxa$taxon) %>% 
+  filter(taxon %in% cce_taxa$taxon) 
+
+# Test if there is a difference in concentrations
+# Wilcoxon–Mann–Whitney test because concentrations are far from a normal distribution
+p_val <- c() # initiate empty vector to store p-values
+for (taxa in cce_taxa$taxon){ # Loop over taxa
+  cce_day <- cce_epi %>% filter(taxon == taxa) %>% filter(day_night == "day") # extract day concentrations
+  cce_night <- cce_epi %>% filter(taxon == taxa) %>% filter(day_night == "night") # extract night concentrations
+  
+  test_res <- wilcox.test(x = cce_day$conc, y = cce_night$conc) # perform test
+  
+  p_val <- c(p_val, test_res$p.value) # store p_value
+}
+
+# Store test p-values and taxa in a table
+cce_p_vals <- tibble(
+  taxon = cce_taxa$taxon,
+  p_val = p_val
+) %>% 
+  mutate( # compute significance for various thesholds
+    sig_05 = p_val < 0.05, # *
+    sig_01 = p_val < 0.01, # **
+    sig_001 = p_val < 0.001, # ***
+    )
+cce_p_vals
+# Concentrations are different between day and night for Copepoda and Eumalacostraca, and maybe for Phaeodaria. 
+
+
+# Boxplot of concentrations
+cce_epi %>% 
   ggplot() +
   geom_boxplot(aes(x = taxon, y = conc, color = day_night)) +
   # y scale as log
