@@ -10,6 +10,7 @@
 #--------------------------------------------------------------------------#
 suppressMessages(library(tidyverse))
 library(lubridate)
+library(svglite)
 
 
 ## Create directories for plots ----

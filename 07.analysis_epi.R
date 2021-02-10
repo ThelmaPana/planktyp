@@ -22,7 +22,7 @@ subset <- all_data %>% filter(layer == study_layer)
 message(nrow(subset), " profiles in epipelagic layer")
 
 # Minimum number of profiles per regionalisation modality
-#n_min <- 50
+n_min <- 50
 n_target_max <- 13
 n_target_env <- 15
 n_target_null <- 12
@@ -93,6 +93,13 @@ dev.off()
 # Add clusters to table of individuals
 ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
 
+# Save plot for paper
+png(file = "plots/paper/07.plankton_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
+plot(clust_zoo, main = "Cluster dendrogram on plankton data in epipelagic layer")
+nclust <- 3
+rect.hclust(clust_zoo, k=nclust)
+dev.off()
+
 # Check number of profile per cluster
 ind_clust %>% 
   group_by(clust_zoo) %>% 
@@ -115,6 +122,11 @@ eig <- as.data.frame(t(summary(eigenvals(pca)))) %>%
   as_tibble() %>% 
   rename(eigenvalue = Eigenvalue, prop_exp = `Proportion Explained`, cum_prop = `Cumulative Proportion`) %>% 
   mutate(PC = str_remove(PC, "PC") %>% as.numeric() %>% as.factor())
+
+# Variance explained by first 2 PC
+eig %>% slice(1:2) %>% summarise_if(is.numeric, sum)
+# and by first 4 PC
+eig %>% slice(1:4) %>% summarise_if(is.numeric, sum)
 
 # Extract PCA scores of profiles for plots (scaling 2)
 ind_plot <- vegan::scores(pca, display="sites", choices=c(1:5), scaling=2) %>% 
@@ -184,7 +196,7 @@ ggplot() +
   # Circle of equivalent contributions
   #geom_path(aes(k*x, k*y), data = circ, color = "gray") +
   # Points for individuals (i.e. profiles) with color according to plankton cluster
-  geom_point(aes(x = k*PC1, y = k*PC2, colour = clust_zoo), data = ind_plot, alpha = 0.5) +
+  geom_point(aes(x = k*PC1, y = k*PC2, colour = clust_zoo), data = ind_plot, alpha = 0.5, size = 0.5) +
   # Points for species with high contribution
   geom_point(aes(x = PC1, y = PC2), data = filter(var_plot, disp12)) +
   # Labels for species with high contribution
@@ -213,6 +225,7 @@ ggplot() +
   # Bigger points in the legend
   guides(colour = guide_legend(override.aes = list(size=3)))
 ggsave(file = "plots/analysis/epi/07.plankton_pca_biplot_1_2.png")
+ggsave(file = "plots/paper/07.plankton_pca_biplot_1_2.svg")
 
 
 ## Biplot PCA axes 2-3 ----
@@ -232,7 +245,7 @@ ggplot() +
   # Circle of equivalent contributions
   #geom_path(aes(k*x, k*y), data = circ, color = "gray") +
   # Points for individuals (i.e. profiles) with color according to plankton cluster
-  geom_point(aes(x = k*PC2, y = k*PC3, colour = clust_zoo), data = ind_plot, alpha = 0.5) +
+  geom_point(aes(x = k*PC2, y = k*PC3, colour = clust_zoo), data = ind_plot, alpha = 0.5, size = 0.5) +
   # Points for species with high contribution
   geom_point(aes(x = PC2, y = PC3), data = filter(var_plot, disp23)) +
   # Labels for species with high contribution
@@ -272,7 +285,7 @@ ind_plot %>%
   # Map coordinates
   coord_quickmap() +
   # Points for profiles coordinates with color according to plankton cluster
-  geom_point(aes(x = lon, y = lat, color = clust_zoo)) +
+  geom_point(aes(x = lon, y = lat, color = clust_zoo), size = 1) +
   # Nice theme
   theme_minimal() +
   # Use same color palette as for PCA biplot
@@ -288,6 +301,7 @@ ind_plot %>%
   guides(colour = guide_legend(override.aes = list(size=3))) +
   ggtitle("Map of epipelagic plankton clusters")
 ggsave(file = "plots/analysis/epi/07.plankton_clusters_map.png")
+ggsave(file = "plots/paper/07.plankton_clusters_map.svg")
 
 
 ## Plot clusters composition ----
@@ -636,16 +650,13 @@ ggsave(file = "plots/analysis/epi/07.partitioning_anosim.png")
 # For each saved table, generate a column with layer name
 
 # Anosim results
-anosim_res %>% 
-  mutate(layer = study_layer) %>% 
-  save(file="data/07.epi_anosim.Rdata")
+anosim_res <- anosim_res %>% mutate(layer = study_layer) %>% 
+save(anosim_res, file="data/07.epi_anosim.Rdata")
 
 # Plankton composition of plankton clusters
-comp %>% 
-  mutate(layer = study_layer) %>% 
-  save(file="data/07.epi_plankton_cluster_comp.Rdata")
+comp <- comp %>% mutate(layer = study_layer)
+save(comp, file="data/07.epi_plankton_cluster_comp.Rdata")
 
 # Partitionings for anosim
-groups %>% 
-  mutate(layer = study_layer) %>% 
-  save(file="data/07.epi_partitionings.Rdata")
+groups <- groups %>% mutate(layer = study_layer)
+save(groups, file="data/07.epi_partitionings.Rdata")
