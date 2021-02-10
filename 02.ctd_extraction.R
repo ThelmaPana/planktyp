@@ -99,3 +99,5 @@ db_disconnect_ecotaxa(db)
 #--------------------------------------------------------------------------#
 save(ctd_raw, file = "data/02.ctd_raw.Rdata")
 
+# write a csv.gz file for data storage 
+#write.csv(ctd_raw, file=gzfile("data/export/02.ctd_raw.csv.gz"))

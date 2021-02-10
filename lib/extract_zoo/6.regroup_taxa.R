@@ -41,5 +41,8 @@ g <- left_join(g, group_lineages)
 # g %>% drop_na(group) %>% group_by(lineage, group) %>% summarise(n=sum(n), .groups="drop") %>% View()
 
 # and add to the objects file
-left_join(o, select(g, taxon, group=group_thelma, group_lineage=lineage) %>% na.omit()) %>%
-  write_feather("data/00.all_zoo.feather")
+all_zoo <- left_join(o, select(g, taxon, group=group_thelma, group_lineage=lineage) %>% na.omit())
+write_feather(all_zoo, "data/00.all_zoo.feather")
+
+# write a csv.gz file for data storage 
+#write.csv(all_zoo, file=gzfile("data/export/00.all_zoo.csv.gz"))

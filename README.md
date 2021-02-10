@@ -3,12 +3,11 @@
 Typology of Plankton Communities seen by *In Situ* Imaging in the First 500 m of the Global Ocean
 
 Thelma Panaïotis M2 internship
+
 January 2019 - June 2019
+
 Laboratoire d’Océanographie de Villefranche (UMR 7093)
 
-## TODOs
-- [ ] check Trichodesmium below 500 m
-- [ ] check high watervolumes
  
 ## Organisation of repository
 ### Folders
@@ -17,6 +16,7 @@ Laboratoire d’Océanographie de Villefranche (UMR 7093)
 - `data` contains data
     - `data/extract_zoo` contains data needed to run plankton data extraction
     - `data/raw` contains other raw data needed to run the analysis
+    - `data/export` contains data exports for plankton and CTD
 - `plots` contains generated plots, organized by theme
 
 ### Scripts

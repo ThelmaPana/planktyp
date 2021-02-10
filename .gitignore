@@ -4,4 +4,5 @@
 /data/*.Rdata
 /data/extract_zoo/projects/*
 /data/ignore/*
+/data/export/*
 .Rproj.user
