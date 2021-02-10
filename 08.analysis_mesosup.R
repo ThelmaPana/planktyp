@@ -213,18 +213,24 @@ ggplot() +
   # Nice color palette
   scale_color_brewer(palette = "Set2") +
   # Put explained variance in axes names
-  xlab(paste0("PC 1", " (", format(round(100*eig$prop_exp[1], 2), nsmall = 2), "%)")) +
-  ylab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 2), nsmall = 2), "%)")) +
+  xlab(paste0("PC 1", " (", format(round(100*eig$prop_exp[1], 1), nsmall = 1), "%)")) +
+  ylab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 1), nsmall = 1), "%)")) +
   # Legend title
   labs(color = "Plankton clusters") +
   # Plot title
-  ggtitle("PCA biplot of epipelagic profiles, PC1 and PC2") +
+  ggtitle("PCA biplot of mesopelagic profiles, PC1 and PC2") +
   # Nice theme
   theme_classic() +
   # Legend position at the bottom
-  theme(legend.position = "bottom") +
-  # Bigger points in the legend
-  guides(colour = guide_legend(override.aes = list(size=3)))
+  #theme(legend.position = "bottom") +
+  # Legend inside plot
+  theme(
+    legend.position = c(.05, .05),
+    legend.justification = c("left", "bottom"),
+    legend.direction = "horizontal",
+  ) +
+  # Bigger points in the legend, legend title on top
+  guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) 
 ggsave(file = "plots/analysis/mesosup/08.plankton_pca_biplot_1_2.png")
 ggsave(file = "plots/paper/08.plankton_pca_biplot_1_2.svg")
 
@@ -262,12 +268,12 @@ ggplot() +
   # Nice color palette
   scale_color_brewer(palette = "Set2") +
   # Put explained variance in axes names
-  xlab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 2), nsmall = 2), "%)")) +
-  ylab(paste0("PC 3", " (", format(round(100*eig$prop_exp[3], 2), nsmall = 2), "%)")) +
+  xlab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 1), nsmall = 1), "%)")) +
+  ylab(paste0("PC 3", " (", format(round(100*eig$prop_exp[3], 1), nsmall = 1), "%)")) +
   # Legend title
   labs(color = "Plankton clusters") +
   # Plot title
-  ggtitle("PCA biplot of epipelagic profiles, PC2 and PC3") +
+  ggtitle("PCA biplot of mesopelagic profiles, PC2 and PC3") +
   # Nice theme
   theme_classic() +
   # Legend position at the bottom
@@ -294,12 +300,18 @@ ind_plot %>%
   # Rename axes
   labs(x = "Longitude", y = "Latitude", color = "Plankton clusters") +
   # Legend at the bottom
-  theme(legend.position="bottom") +
+  #theme(legend.position="bottom") +
+  theme(
+    legend.position = c(0.025, 0.05),
+    legend.justification = c("left", "bottom"),
+    legend.background = element_rect(fill="white", size=0, linetype="solid"),
+    legend.direction = "horizontal",
+  ) +
   # Remove white spaces on the border
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
-  # Bigger points in the legend
-  guides(colour = guide_legend(override.aes = list(size=3))) +
+  # Bigger points in the legend, legend title on top
+  guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) +
   ggtitle("Map of mesosup plankton clusters")
 ggsave(file = "plots/analysis/mesosup/08.plankton_clusters_map.png")
 ggsave(file = "plots/paper/08.plankton_clusters_map.svg")

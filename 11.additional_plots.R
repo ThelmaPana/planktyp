@@ -7,6 +7,7 @@
 
 source("lib/set_up.R")
 library(feather)
+library(scales)
 
 load("data/01.bio_data.Rdata")
 load("data/06.all_data.Rdata")
@@ -105,7 +106,7 @@ load("data/08.mesosup_plankton_cluster_comp.Rdata")
 mesosup_comp <- comp
 
 comp <- bind_rows(epi_comp, mesosup_comp) %>% 
-  mutate(layer = ifelse(layer == "epi", "Epipelagic", "Mesopelagic sup"))
+  mutate(layer = ifelse(layer == "epi", "Epipelagic", "Mesopelagic"))
 comp %>% 
   ggplot() +
   geom_tile(aes(x = clust_zoo, y = taxon, fill = prop)) +
@@ -118,10 +119,36 @@ comp %>%
   # Reorder taxon
   scale_y_discrete(limits = rev(levels(comp$taxon))) +
   # Rename axes and legend
-  labs(x = "Plankton clusters", y = "Taxon", fill = "Proportion") +
+  labs(x = "Plankton clusters", y = "Taxon", fill = "Proportion \n") +
+  # Legend position at the bottom
+  theme(legend.position = "bottom") +
   facet_wrap(~layer)
 ggsave("plots/zoo/11.plankton_clusters_composition.png")  
 ggsave("plots/paper/11.plankton_clusters_composition.svg")  
+
+# Other version with difference beween actual and equal proportions
+comp %>% 
+  mutate(
+    equal_prop = 1/length(unique(taxon)), # compute equal proportions of all taxa
+    diff_prop = prop - equal_prop, # compute difference between prop and equal prop
+    ) %>% 
+  ggplot() +
+  geom_tile(aes(x = clust_zoo, y = taxon, fill = diff_prop)) +
+  scale_fill_gradient2(high = muted("blue"), low = muted("red")) +
+  # Choose a gray color scale
+  #scale_fill_distiller(palette = "Greys", direction = 1, limits = c(0,1)) +
+  # Minimal theme
+  theme_minimal() +
+  # Remove background grid
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  # Reorder taxon
+  scale_y_discrete(limits = rev(levels(comp$taxon))) +
+  # Rename axes and legend
+  labs(x = "Plankton clusters", y = "Taxon", fill = "Difference to \nequal proportions") +
+  # Legend position at the bottom
+  theme(legend.position = "bottom") +
+  facet_wrap(~layer)
+
 
 
 ## Maps of plankton distribution ----
