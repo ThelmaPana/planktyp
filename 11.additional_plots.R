@@ -8,6 +8,7 @@
 source("lib/set_up.R")
 library(feather)
 library(scales)
+library(vegan)
 
 load("data/01.bio_data.Rdata")
 load("data/06.all_data.Rdata")
@@ -298,6 +299,7 @@ o %>%
   arrange(depth)
 # 130 copepods between surface and 200 m  
 
+
 ## Look at anosim results ----
 #--------------------------------------------------------------------------#
 # Load results
@@ -320,3 +322,62 @@ load("data/08.mesosup_partitionings.Rdata")
 groups_meso <- groups 
 nrow(groups_meso) # number of included profiles
 groups_meso %>% count(day_night) # number of day and night profiles
+
+
+## Eigenvalues and layers ----
+#--------------------------------------------------------------------------#
+# Investigate structure level of layers by comparing eigenvalues
+# Do this with the same number of profiles in each layer
+# Count profiles per layer
+all_data %>% count(layer) %>% arrange(n)
+# 827 profiles in bathypelagic layer
+# Run a PCA on a subsample of plankton data
+n_prof <- all_data %>% count(layer) %>% filter(n == min(n)) %>% pull(n)
+
+layers <- c("epi", "mesosup", "mesoinf", "bathy") # layers to run PCA on
+eig <- tibble() # initiate empty tibble to store results
+
+for (my_layer in layers){ # loop over layers
+  # Extract plankton data
+  zoo <- all_data %>% 
+    filter(layer == my_layer) %>% # relevant layer
+    select(Acantharea:Trichodesmium) %>% # select plankton concentrations
+    sample_n(n_prof) # sample <n_prof> profiles 
+  
+  # Apply Hellinger transformation
+  zoo_hel <- tibble(decostand(zoo, "hellinger"))
+  
+  # Run PCA
+  pca <- rda(zoo_hel)
+  
+  # Extract eigenvalues for this layer
+  eig_layer <- as.data.frame(t(summary(eigenvals(pca)))) %>% 
+    rownames_to_column(var = "PC") %>% 
+    as_tibble() %>% 
+    rename(eigenvalue = Eigenvalue, prop_exp = `Proportion Explained`, cum_prop = `Cumulative Proportion`) %>% 
+    mutate(
+      PC = str_remove(PC, "PC") %>% as.numeric() %>% as.factor(),
+      eig_cor = eigenvalue - mean(eigenvalue), # compute centered eigenvalue
+      layer = my_layer, # add a column with layer
+      n = row_number(),
+    )
+  
+  # Bind rows with eigvals from other layers
+  eig <- bind_rows(eig, eig_layer)
+}
+
+eig %>% 
+  ggplot() +
+  geom_path(aes(x = n, y = eig_cor, colour = layer)) +
+  # dotted black line at y=0
+  geom_hline(aes(yintercept = 0), colour = "black", alpha = 0.5, lty = 3) +
+  theme_classic() +
+  theme(legend.position = c(.8,.7), legend.justification=c(0.5,0.5)) +
+  scale_x_continuous(breaks = c(1:28)) +
+  labs(colour = "Layer", x = "Principal componant", y = "Centered eigenvalue") +
+  scale_color_manual(
+    values = c("#a1dab4", "#41b6c4", "#2c7fb8", "#253494"), 
+    name = "Layer", 
+    labels = c("Epipelagic", "Mesopelagic sup", "Mesopelagic inf", 'Bathypelagic')
+  )
+ggsave("plots/zoo/11.eigenvalues_layers.png")  

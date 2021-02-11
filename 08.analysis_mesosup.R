@@ -164,7 +164,7 @@ var_plot <- vegan::scores(pca, display="species", choices=c(1:5), scaling=2) %>%
   left_join(var_sel)
 
 
-## Plot PCA eigenvalues plot ----
+## Plot PCA eigenvalues ----
 #--------------------------------------------------------------------------#
 eig %>% 
   ggplot() +
@@ -701,3 +701,7 @@ save(comp, file="data/08.mesosup_plankton_cluster_comp.Rdata")
 # Partitionings for anosim
 groups <- groups %>% mutate(layer = study_layer)
 save(groups, file="data/08.mesosup_partitionings.Rdata")
+
+# Plankton PCA eigenvalues
+eig <- eig %>% mutate(layer = study_layer)
+save(eig, file="data/08.mesosup_plankton_eigvals.Rdata")
