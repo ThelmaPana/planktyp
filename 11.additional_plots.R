@@ -283,6 +283,21 @@ ggsave("plots/zoo/11.cce_conc_day_night.png")
 ggsave("plots/paper/11.cce_conc_day_night.svg")
 
 
+# Check high value of copepoda at day
+cce_psample <- cce_epi %>% 
+  filter(day_night == "day" & taxon == "Copepoda") %>% 
+  arrange(desc(conc)) %>% 
+  slice(1) %>% 
+  pull(psampleid)
+
+cce_prof <- all_data %>% filter(psampleid == cce_psample) %>% select(title:datetime) %>% pull(profile)
+o %>% 
+  select(title:profile, lat, lon, datetime, depth, taxon, lineage, group, group_lineage) %>% 
+  filter(profile == cce_prof & group == "Copepoda") %>% 
+  filter(depth < 200) %>% 
+  arrange(depth)
+# 130 copepods between surface and 200 m  
+
 ## Look at anosim results ----
 #--------------------------------------------------------------------------#
 # Load results
