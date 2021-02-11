@@ -5,8 +5,6 @@
 # Author: Thelma Panaiotis
 #--------------------------------------------------------------------------#
 
-
-
 source("lib/set_up.R")
 library(vegan)
 library(ggrepel)
@@ -30,7 +28,12 @@ n_min <- 25
 n_target_max <- 10
 n_target_env <- 14
 n_target_null <- 9
-  
+
+## Create a nice color scale
+# - group 1 is mixed --> blue #2c7fb8
+# - group 2 is copepods --> red/orange #fc8d62
+# - group 3 is phaeodaria --> dark green #66c2a5
+my_colors <- c("#fc8d62", "#2c7fb8", "#66c2a5")
 
 ## Prepare data ----
 #--------------------------------------------------------------------------#
@@ -88,16 +91,16 @@ plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer")
 # Choose number of clusters
 nclust <- 3
 # Plot clusters
-rect.hclust(clust_zoo, k=nclust)
+rect.hclust(clust_zoo, k=nclust, border=my_colors)
 dev.off()
 # Add clusters to table of individuals
 ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
 
 # Save plot for paper
-png(file = "plots/paper/08.plankton_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
+svg(file = "plots/paper/08.plankton_dendrogram.svg", width = 9.79, height = 7.96)
 plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer")
 nclust <- 3
-rect.hclust(clust_zoo, k=nclust)
+rect.hclust(clust_zoo, k=nclust, border=my_colors)
 dev.off()
 
 # Check number of profile per cluster
@@ -210,7 +213,8 @@ ggplot() +
   # Add a little padding
   scale_x_continuous(expand = c(.1, 0)) +
   # Nice color palette
-  scale_color_brewer(palette = "Set2") +
+  #scale_color_brewer(palette = "Set2") +
+  scale_color_manual(values = my_colors) +
   # Put explained variance in axes names
   xlab(paste0("PC 1", " (", format(round(100*eig$prop_exp[1], 1), nsmall = 1), "%)")) +
   ylab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 1), nsmall = 1), "%)")) +
@@ -265,7 +269,8 @@ ggplot() +
   # Add a little padding
   scale_x_continuous(expand = c(.1, 0)) +
   # Nice color palette
-  scale_color_brewer(palette = "Set2") +
+  #scale_color_brewer(palette = "Set2") +
+  scale_color_manual(values = my_colors) +
   # Put explained variance in axes names
   xlab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 1), nsmall = 1), "%)")) +
   ylab(paste0("PC 3", " (", format(round(100*eig$prop_exp[3], 1), nsmall = 1), "%)")) +
@@ -295,7 +300,8 @@ ind_plot %>%
   # Nice theme
   theme_minimal() +
   # Use same color palette as for PCA biplot
-  scale_color_brewer(palette = "Set2") +
+  #scale_color_brewer(palette = "Set2") +
+  scale_color_manual(values = my_colors) +
   # Rename axes
   labs(x = "Longitude", y = "Latitude", color = "Plankton clusters") +
   # Legend at the bottom
