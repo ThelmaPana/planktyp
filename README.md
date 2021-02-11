@@ -12,11 +12,11 @@ Laboratoire d’Océanographie de Villefranche (UMR 7093)
 ## Organisation of repository
 ### Folders
 - `lib` contains scripts called when needed
-    - `lib/extract_zoo` contains scripts to extract plankton data
+    - `lib/extract_zoo` contains scripts to extract plankton data from EcoTaxa
 - `data` contains data
     - `data/extract_zoo` contains data needed to run plankton data extraction
     - `data/raw` contains other raw data needed to run the analysis
-    - `data/export` contains data exports for plankton and CTD
+    - `data/export` contains plankton and CTD data exported from EcoTaxa
 - `plots` contains generated plots, organized by theme
 
 ### Scripts
@@ -33,6 +33,8 @@ Scripts order is self-explanatory.
 - `09.analysis_mesoinf.R` analyses for mesopelagic inferior layer
 - `10.analysis_bathy.R` analyses for bathypelagic layer
 - `11.additional_plots.R` additional and exploratory plots
+- `12.subsample_epi.R` analyses for epipelagic layer after profile subsampling
+- `13.subsample_mesosup.R` analyses for mesopelagic superior layer after profile subsampling
 
 
 ## Results
