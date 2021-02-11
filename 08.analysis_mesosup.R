@@ -9,7 +9,6 @@
 
 source("lib/set_up.R")
 library(vegan)
-library(FactoMineR)
 library(ggrepel)
 library(grid)
 library(gridExtra)
