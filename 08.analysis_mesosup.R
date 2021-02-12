@@ -86,7 +86,7 @@ euc_dist <- dist(select(ind_clust, c(PC1:PC5)), method = "euclidian")
 # Compute hierarchical clustering with Ward method
 clust_zoo <- hclust(euc_dist, method = "ward.D2")
 # Plot dendrogram
-png(file = "plots/analysis/mesosup/08.plankton_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
+png(file = "plots/analysis/mesosup/08.plankton_dendrogram.png", width = 8, height = 6, units = "in", res = 300)
 plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer")
 # Choose number of clusters
 nclust <- 3
@@ -97,8 +97,8 @@ dev.off()
 ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
 
 # Save plot for paper
-svg(file = "plots/paper/08.plankton_dendrogram.svg", width = 9.79, height = 7.96)
-plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer")
+svg(file = "plots/paper/08.plankton_dendrogram.svg", width = 6, height = 4)
+plot(clust_zoo, hang = -1, main = "", xlab = "", sub = "", labels = F)
 nclust <- 3
 rect.hclust(clust_zoo, k=nclust, border=my_colors)
 dev.off()
@@ -235,7 +235,6 @@ ggplot() +
   # Bigger points in the legend, legend title on top
   guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) 
 ggsave(file = "plots/analysis/mesosup/08.plankton_pca_biplot_1_2.png")
-ggsave(file = "plots/paper/08.plankton_pca_biplot_1_2.svg")
 
 
 ## Biplot PCA axes 2-3 ----
@@ -319,7 +318,7 @@ ind_plot %>%
   guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) +
   ggtitle("Map of mesosup plankton clusters")
 ggsave(file = "plots/analysis/mesosup/08.plankton_clusters_map.png")
-ggsave(file = "plots/paper/08.plankton_clusters_map.svg")
+ggsave(file = "plots/paper/08.plankton_clusters_map.svg", width = 8, height = 5)
 
 
 ## Plot clusters composition ----
