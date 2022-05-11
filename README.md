@@ -12,16 +12,13 @@ Laboratoire d’Océanographie de Villefranche (UMR 7093)
 ## Organisation of repository
 ### Folders
 - `lib` contains scripts called when needed
-    - `lib/extract_zoo` contains scripts to extract plankton data from EcoTaxa
 - `data` contains data
-    - `data/extract_zoo` contains data needed to run plankton data extraction
-    - `data/raw` contains other raw data needed to run the analysis
-    - `data/export` contains plankton and CTD data exported from EcoTaxa
+    - `data/raw` contains all raw data needed to run the analysis
 - `plots` contains generated plots, organized by theme
 
 ### Scripts
 Scripts order is self-explanatory. 
-- `00.run_zoo_extraction.R` run extraction of biological data from EcoTaxa (see https://github.com/jiho/UVP5_images_dataset)
+- `00.run_zoo_extraction.R` read extraction of biological data (see https://github.com/jiho/UVP5_images_dataset)
 - `01.zoo_data_split.R` split biological data into zooplankton, detritus and particles
 - `02.ctd_extraction.R` extract CTD data from Ecopart 
 - `03.ctd_process.R` process CTD data (clean, despike, smooth, compute clines)
