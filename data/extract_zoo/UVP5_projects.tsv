@@ -63,7 +63,7 @@ pprojid	ptitle	data_owner	projid	title	use
 63	uvp5_sn009_2015_goa	amcdonnell@alaska.edu	1904	uvp5_sn009_2015_goa_oa	
 64	uvp5_sn009_2015_p16n	amcdonnell@alaska.edu	43	uvp5_sn009_2015_p16n	
 65	uvp5_sn009_2015_p16n_goa	amcdonnell@alaska.edu	43	uvp5_sn009_2015_p16n	
-66	uvp5_sn009_sewardline_f2014	amcdonnell@alaska.edu	62	UVP5 Sewardline	
+66	uvp5_sn009_sewardline_f2014	amcdonnell@alaska.edu	62	uvp5_sn009_sewardline_f2014	
 67	uvp5_sn009_txs14	amcdonnell@alaska.edu	65	uvp5_sn009_2014_nga_spring	
 68	uvp5_sn010_2014_m105	rkiko@geomar.de	602	UVP5 Geomar 2014 m105	
 69	uvp5_sn010_2014_m106	rkiko@geomar.de	595	UVP5 Geomar 2014 m106	
@@ -222,3 +222,15 @@ pprojid	ptitle	data_owner	projid	title	use
 285	uvp6_sn000125hf_2020_solace	philip.boyd@utas.edu.au	NA	NA	
 286	uvp6_sn000125hf_20201015_rade_testctd		NA	NA	
 287	uvp5_sn205_solace_2020_2021_filtered	david.antoine@curtin.edu.au	NA	NA	
+288	uvp5_sn205_intercalibrage_20201001	enter op. email	NA	NA	
+289	uvp5_sn210_intercalibrage_20210107	amanda.elineau@obs-vlfr.fr	NA	NA	
+290	uvp6_sn000005lp_20210107_intercalibrage		NA	NA	
+291	uvp6_sn000008lp_20210107_intercalibrage		NA	NA	
+292	uvp6_sn000010lp_20210107_intercalibrage		NA	NA	
+293	uvp6_sn000005lp_20201001_intercalibrage		NA	NA	
+294	uvp6_sn000008lp_20201001_intercalibrage		NA	NA	
+295	uvp6_sn000010lp_20201001_intercalibrage		NA	NA	
+296	uvp6_sn000125hf_20201001_intercalibrage		NA	NA	
+297	uvp5_sn203_2020_msm93	anya.waite@dal.ca	3990	UVP5HD sn203 MSM93 2020	
+298	uvp6_sn000125hf_20210212_intercalibrage		4008	uvp6_sn000125hf_20210212_intercalibrage	
+299	uvp6_sn000107lp_20210203_rade_sediment		4011	uvp6_sn000107lp_20210203_rade_sediment	

@@ -439,6 +439,13 @@ layers <- ctd_int %>%
     epi_mld = ifelse(ze > mld, ze, mld), # from ze and mld
     ) 
 
+# Inspect depth of pycnocline
+layers %>% 
+  ggplot() +
+  geom_histogram(aes(x = pyc), binwidth = 5)
+sum(layers$pyc > 250)
+# 32 profiles with pycnocline deeper than 250 m
+
 # Inspect depth of epipelagic layer
 layers %>% 
   select(psampleid, epi_pyc, epi_mld) %>% 

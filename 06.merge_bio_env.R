@@ -94,6 +94,7 @@ mesosup <- all %>%
     range_max = 497.5 - depth_min, # maximum range of mesosup layer (from epipelagic layer to last bin before 500 m)
     .after = depth
     ) %>% 
+  #mutate(keep = range >= 0.8*range_max)
   filter(range >= 0.8*range_max) %>% # keep only profiles which cover >80% of maximum range
   summarise_at(vars(Acantharea:kd490), mean, na.rm = TRUE) %>% # compute mean concentration for all plankton groups and env data
   ungroup()%>% 

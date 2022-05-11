@@ -5,7 +5,6 @@
 # Author: Thelma Panaiotis
 #--------------------------------------------------------------------------#
 
-# TODO explain variables selection on PCA plots
 
 source("lib/set_up.R")
 library(vegan)
@@ -95,7 +94,7 @@ plot(clust_zoo, main = "Cluster dendrogram on plankton data in epipelagic layer"
 # Choose number of clusters
 nclust <- 3
 # Plot clusters
-rect.hclust(clust_zoo, k=nclust, border=my_colors)
+rect.hclust(clust_zoo, k=nclust, border=rev(my_colors))
 dev.off()
 # Add clusters to table of individuals
 ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
@@ -104,7 +103,7 @@ ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
 svg(file = "plots/paper/07.plankton_dendrogram.svg", width = 6, height = 4)
 plot(clust_zoo, hang = -1, main = "", xlab = "", sub = "", labels = F)
 nclust <- 3
-rect.hclust(clust_zoo, k=nclust, border=my_colors)
+rect.hclust(clust_zoo, k=nclust, border=rev(my_colors))
 dev.off()
 
 
@@ -688,3 +687,4 @@ save(groups, file="data/07.epi_partitionings.Rdata")
 # Plankton PCA eigenvalues
 eig <- eig %>% mutate(layer = study_layer)
 save(eig, file="data/07.epi_plankton_eigvals.Rdata")
+

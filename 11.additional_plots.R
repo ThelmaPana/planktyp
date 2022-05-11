@@ -12,6 +12,8 @@ library(vegan)
 
 load("data/01.bio_data.Rdata")
 load("data/06.all_data.Rdata")
+load("data/03.layers.Rdata")
+#load("data/00.extraction.Rdata")
 
 
 ## Get plankton organisms in selected profiles and groups ----
@@ -28,13 +30,13 @@ my_taxa <- zoo_conc %>% select(Acantharea:Trichodesmium) %>% colnames()
 my_taxa <- c(my_taxa, "detritus")
 
 # Read table with all objects
-o <- read_feather("data/00.all_zoo.feather")
+#o <- read_feather("data/00.all_zoo.feather")
 
 # Keep only objects in selected profiles
-o <- o %>% filter(sampleid %in% my_samples$sampleid)
+zoo <- zoo %>% filter(sampleid %in% my_samples$sampleid)
 
 # Keep only objects in selected taxa
-o <- o %>% filter(group %in% my_taxa)
+zoo <- zoo %>% filter(taxon %in% my_taxa)
 
 
 ## Inspect dataset composition ----
@@ -47,25 +49,27 @@ length(unique(all_data$psampleid))
 all_data %>% select(psampleid, layer) %>% count(layer)
 
 # Number of objects
-nrow(o) # objects
-nrow(o %>% filter(group != "detritus")) # living objects
+sum(zoo$abund) # living objects
+sum(det$abund) # detritus
+sum(det$abund) + sum(zoo$abund) # all objects
 
 # Number and list of taxonomic groups
-length(unique(o$group)) # 29 groups including detritus --> 28 taxonomic groups
-sort(unique(o$group))
+length(unique(zoo$taxon)) # 28 groups including detritus --> 27 taxonomic groups
+sort(unique(zoo$taxon))
 
 
 ## Bar chart of plankton organisms count ----
 #--------------------------------------------------------------------------#
 # Plot bar chart
-o %>% 
-  count(group) %>% 
+zoo %>% 
+  group_by(taxon) %>% 
+  summarise(n = sum(abund)) %>% 
   ungroup() %>% 
-  filter(group != "detritus") %>% # ignore detritus 
+  filter(taxon != "detritus") %>% # ignore detritus 
   arrange(desc(n)) %>% # sort by descending number of objects
-  mutate(group = factor(group, group)) %>% # group as factor for a nice plot
+  mutate(taxon = factor(taxon, taxon)) %>% # taxon as factor for a nice plot
   ggplot() +
-  geom_col(aes(x = group, y = n)) +
+  geom_col(aes(x = taxon, y = n)) +
   theme_classic() +
   # rotate x axis text
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -79,14 +83,15 @@ ggsave("plots/zoo/11.plankton_dataset_comp.png")
 ggsave("plots/paper/11.plankton_dataset.svg")
 
 # Plot bar chart with log y axis
-o %>% 
-  count(group) %>% 
+zoo %>% 
+  group_by(taxon) %>% 
+  summarise(n = sum(abund)) %>% 
   ungroup() %>% 
-  filter(group != "detritus") %>% # ignore detritus 
+  filter(taxon != "detritus") %>% # ignore detritus 
   arrange(desc(n)) %>% # sort by descending number of objects
-  mutate(group = factor(group, group)) %>% # group as factor for a nice plot
+  mutate(taxon = factor(taxon, taxon)) %>% # taxon as factor for a nice plot
   ggplot() +
-  geom_col(aes(x = group, y = n)) +
+  geom_col(aes(x = taxon, y = n)) +
   theme_classic() +
   # rotate x axis text
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -95,8 +100,8 @@ o %>%
   # Axes labels
   xlab("Taxonomic group") +
   ylab("n organisms") +
-  ggtitle("Plankton dataset composition") +
-  ggsave("plots/zoo/11.plankton_dataset_comp_log.png") 
+  ggtitle("Plankton dataset composition")
+#ggsave("plots/zoo/11.plankton_dataset_comp_log.png") 
 
 
 ## Plankton clusters composition ----
@@ -161,14 +166,13 @@ comp %>%
 zoo_conc %>% 
   select(c(title:depth, Trichodesmium))
 
-tricho <- o %>% 
-  select(c(title:datetime, depth, taxon = group)) %>% 
+tricho <- zoo %>% 
+  #select(c(title:datetime, depth, taxon)) %>% 
   filter(taxon == "Trichodesmium")
 summary(tricho)
+
 # Most Trichodesmium are < 50 m but a few are very deep
 tricho %>% filter(depth > 500) %>% select(title, profile, sampleid) %>% unique()
-# 169 profiles have Tricho > 500 m
-
 
 tricho %>%   
   ggplot() +
@@ -292,11 +296,12 @@ cce_psample <- cce_epi %>%
   pull(psampleid)
 
 cce_prof <- all_data %>% filter(psampleid == cce_psample) %>% select(title:datetime) %>% pull(profile)
-o %>% 
-  select(title:profile, lat, lon, datetime, depth, taxon, lineage, group, group_lineage) %>% 
-  filter(profile == cce_prof & group == "Copepoda") %>% 
+zoo %>% 
+  select(title:profile, lat, lon, depth, taxon, abund) %>% 
+  filter(profile == cce_prof & taxon == "Copepoda") %>% 
   filter(depth < 200) %>% 
-  arrange(depth)
+  arrange(depth) %>% 
+  summarise(sum(abund))
 # 130 copepods between surface and 200 m  
 
 
@@ -381,3 +386,9 @@ eig %>%
     labels = c("Epipelagic", "Mesopelagic sup", "Mesopelagic inf", 'Bathypelagic')
   )
 ggsave("plots/zoo/11.eigenvalues_layers.png")  
+
+
+## Depth of epi-meso pelagic boundary ----
+#--------------------------------------------------------------------------#
+
+summary(layers$epi)

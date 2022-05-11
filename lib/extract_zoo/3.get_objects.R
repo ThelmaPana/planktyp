@@ -14,9 +14,9 @@ samples <- read_tsv(file.path(data_dir, "UVP5_samples_selected.tsv")) %>% select
 
 # work in parallel but do not use too many cores,
 # otherwise the EcoTaxa server will be the bottleneck
-plan(multisession, workers=5)
+#plan(multisession, workers=5)
 # fall back on sequential processing
-# plan(sequential)
+plan(sequential)
 
 # deal with the data project by project, because the mapping is per project
 pids <- samples$projid %>% unique() %>% sort() %>% as.integer()
@@ -45,7 +45,7 @@ future_walk(pids, function(pid) {
       # keep relevant metadata
       select(
         # identifiers
-        projid, sampleid, objid, origid=orig_id, #imgid=img0id,
+        projid, sampleid, objid, origid=orig_id,
         # classification
         classif_id, classif_who, classif_when,
         # depth
@@ -55,9 +55,11 @@ future_walk(pids, function(pid) {
         # TODO do we really need all this since many won't be intercomparable at the scales of the whole dataset because of imaging differences; couldn't we reduce this to area, major, minor?
       ) %>%
       # add path to image within EcoTaxa's vault
-      left_join(tbl(localdb, "images") %>% select(objid, file_name), by="objid") %>%
+      left_join(tbl(localdb, "images") %>% select(objid, imgrank, file_name), by="objid") %>%
+      filter(imgrank==0L) %>%
       collect()
-
+    
+    
     # write an information message
     message(
       "projid = ", format(pid, width=4, justify="right"),
