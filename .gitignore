@@ -3,7 +3,8 @@
 /plots/*
 /plots_old
 /data/*.feather
-/data/*
+/data/extract_zoo/
+/data/*/
 /data_old/
 /data/*.Rdata
 /data/extract_zoo/projects/*
