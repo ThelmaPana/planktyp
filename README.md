@@ -27,12 +27,8 @@ Scripts order is self-explanatory.
 - `06.merge_bio_env.R` match biological and environmental data and cut layers
 - `07.analysis_epi.R` analyses for epipelagic layer
 - `08.analysis_mesosup.R` analyses for mesopelagic superior layer
-- `09.analysis_mesoinf.R` analyses for mesopelagic inferior layer
-- `10.analysis_bathy.R` analyses for bathypelagic layer
 - `11.additional_plots.R` additional and exploratory plots
 - `12.subsample_epi.R` analyses for epipelagic layer after profile subsampling
-- `13.subsample_mesosup.R` analyses for mesopelagic superior layer after profile subsampling
+- `14.check_env_coverage.R` assess quality of environmental coverage
 
 
-## Results
-See paper: https://docs.google.com/document/d/1rGzqq_zt_J82GPJp4djq53LQi6AjiLVa5TquGno2_h8

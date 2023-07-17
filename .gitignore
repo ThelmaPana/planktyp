@@ -13,4 +13,7 @@
 /lib/*
 draft.R
 data/*.csv.gz
+09.analysis_mesoinf.R
+10.analysis_bathy.R
+13.subsample_mesosup.R
 
