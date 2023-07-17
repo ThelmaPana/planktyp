@@ -24,7 +24,7 @@ load("data/raw/uvp_objects.Rdata")
 
 # Select relevant columns
 obj <- obj %>% 
-  select(title, projid, sampleid, profile, objid, depth, datetime, lon, lat, taxon, lineage) %>% 
+  select(title, projid, sampleid, profile, objid, depth, datetime, lon, lat, taxon, lineage, area) %>% 
   # mutate depth bin
   mutate(depth = floor(depth/5)*5 + 2.5)
 
@@ -42,8 +42,7 @@ if (update_sheet){
   print(tc, "taxon","n", limit = 50)
   # Convert to dataframe
   tcd <- ToDataFrameTree(tc, "taxon", "n")%>% 
-    as_tibble() %>% 
-    rename(level0=taxon, nb_level0=n)
+    as_tibble() 
   
   # Write new tree
   range_write(ss, data = tcd, sheet = "counts") 
@@ -77,4 +76,34 @@ o <- obj %>% filter(sampleid %in% samples$sampleid)
 
 ## Save extracted data ----
 #--------------------------------------------------------------------------#
-save(o, file = "data/00.extraction.Rdata")
+# Ignore object area when saving
+save(o %>% select(-area), file = "data/00.extraction.Rdata")
+
+
+## Explore objects size ----
+#--------------------------------------------------------------------------#
+# Join with samples to get pixel size
+o <- o %>% 
+  left_join(samples) %>% 
+  select(title:taxon, area, acq_pixel)
+
+# Compute area and esd in mm
+o <-  o %>% 
+  mutate(
+    area=area*acq_pixel^2,
+    esd=2*sqrt(area/pi)
+  )
+
+# Plot average esd by taxon
+o %>% 
+  group_by(taxon) %>% 
+  summarise(avg_esd = mean(esd)) %>% 
+  ungroup() %>% 
+  arrange(avg_esd) %>% 
+  mutate(taxon = as_factor(taxon)) %>% 
+  ggplot() + 
+  geom_point(aes(x = avg_esd, y = taxon))
+# seems ok
+
+# Proportion of organisms with esd < 1 mm
+o %>% summarise(small_prop = sum(esd < 1) / n())

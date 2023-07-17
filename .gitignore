@@ -12,4 +12,5 @@
 /data/export/*
 /lib/*
 draft.R
+data/*.csv.gz
 

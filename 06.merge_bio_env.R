@@ -193,6 +193,18 @@ all_in_layers <- all_in_layers %>%
   relocate(day_night, prod, .after = psampleid)
 
 
+# Check polar profiles for polar night
+group_profiles %>% 
+  mutate(month = factor(month(datetime))) %>% 
+  filter(day_night == "night") %>% 
+  filter(abs(lat) > 50) %>% 
+  ggplot() +
+  geom_point(aes(x = lon, y = lat, color = month)) +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  coord_quickmap()
+# No profile during polar night
+
+
 ## Join with bio-regions ----
 #--------------------------------------------------------------------------#
 all_data <- all_in_layers %>% 
@@ -203,3 +215,12 @@ all_data <- all_in_layers %>%
 ## Save data ----
 #--------------------------------------------------------------------------#
 save(all_data, file = "data/06.all_data.Rdata")
+
+
+## Dump for paper ----
+#--------------------------------------------------------------------------#
+uvp5_data <- all_data %>% 
+  filter(layer %in% c("epi", "mesosup")) %>% 
+  select(psampleid, lat, lon, datetime, day_night, prod, layer, Acantharea:Trichodesmium, temp:kd490)
+
+write_csv(uvp5_data, file = "data/uvp5_plankton_typology.csv.gz")

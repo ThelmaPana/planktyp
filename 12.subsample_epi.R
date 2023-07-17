@@ -8,12 +8,13 @@
 source("lib/set_up.R")
 library(vegan)
 library(castr)
+library(ggrepel)
+library(sp)
+library(gstat)
+library(pastecs)
 
 load("data/06.all_data.Rdata")
 
-
-prec <- 2 # precision at which to round coordinates
-thres <- 20 # max number of profile per <prec>*<prec> square
 
 
 # Set study layer
@@ -23,6 +24,55 @@ message(nrow(subset), " profiles in epipelagic layer")
 
 # Extract metadata
 meta <- select(subset, title:gbp_code)
+
+prec <- 10 # precision at which to round coordinates
+thres <- 20 # max number of profile per <prec>*<prec> square
+
+
+## Scale of autocorrelation ----
+#--------------------------------------------------------------------------#
+# Variogram for Copepoda / Trichodesmium / Collodaria
+subset
+
+hsp <- SpatialPointsDataFrame(
+  # define the coordinates      
+  coords=select(subset, lon, lat),
+  # provide the associated data
+  # (we need only SiO3 but we can include several other variables here)
+  data=select(subset, Copepoda, Trichodesmium, Collodaria),
+  # define the type of projection (required if coordinates are lon,lat)
+  # here we specify that coordinates are longitudes and latitudes taken in the WGS84 datum
+  # (this is true for most lon,lat data you will encounter)
+  proj4string=CRS("+proj=longlat +datum=WGS84")
+)
+plot(hsp)
+
+v1 <- variogram(Copepoda ~ 1, data=hsp, alpha = c(0,90)) # same variation in both direction
+v1 <- variogram(Copepoda ~ 1, data=hsp, width = 50)
+plot(v1)
+# Difficult to fit a variogram
+
+show.vgms(max = 5000, nugget=0.004, sill=0.01, range=50, models=c("Wav", "Sph", "Exc"))
+
+v2 <- variogram(Trichodesmium ~ 1, data=hsp, width = 200)
+plot(v2)
+
+show.vgms(max = 5000, nugget=0.005, sill=0.04, range=1500, models=c("Wav", "Sph", "Exc"))
+v_fitted <- fit.variogram(v2, vgm(model="Wav", psill=0.04, nugget=0.005, range=900))
+plot(v2, v_fitted)
+
+
+v3 <- variogram(Collodaria ~ 1, data=hsp, width = 200)
+plot(v3)
+v_fitted <- fit.variogram(v3, vgm(model="Sph", psill=0.00001, nugget=0.0001, range=1000))
+plot(v3, v_fitted)
+
+
+# Multivariate: self-Mahalanobis distance
+?disto
+# disto is for a timeseries
+
+
 
 
 ## Round lat and lon to compute profile density ----
@@ -107,15 +157,49 @@ zoo_hel <- tibble(decostand(zoo, "hellinger"))
 #--------------------------------------------------------------------------#
 # Run PCA
 pca <- rda(zoo_hel) # don't scale data because we use Hellinger transformation
+biplot(pca, display = c("sites", "species"), type = c("text", "points"))
 
-# Fit standardized env data on PCA axes
-ef <- envfit (pca ~ ., data = env, perm = 999, na.rm = T, choices=c(1:5))
 
-# Extract coordinates of env data projection
-env_proj <- as.data.frame(ef$vectors$arrows*sqrt(ef$vectors$r)) %>% 
-  rownames_to_column(var = "variable") %>% 
+## Predict discarded stations ----
+#--------------------------------------------------------------------------#
+meta_all <- all_data %>% filter(layer == study_layer) %>% select(title:datetime)
+zoo_all <- all_data %>% filter(layer == study_layer) %>% select(Acantharea:Trichodesmium)
+# Hellinger transformation
+zoo_all_hel <- tibble(decostand(zoo_all, "hellinger"))
+
+
+## S3 method for class 'rda'
+sub_proj <- predict(pca, zoo_all_hel, type = "wa", scaling = 1) %>% 
   as_tibble() %>% 
-  mutate(orig = 0)
+  select(sub_PC1 = PC1, sub_PC2 = PC2)
+sub_proj <- bind_cols(meta_all, sub_proj)
+summary(sub_proj)
+
+
+## PCA with all stations ----
+#--------------------------------------------------------------------------#
+pca_all <- rda(zoo_all_hel) # don't scale data because we use Hellinger transformation
+
+proj <- vegan::scores(pca_all, display="sites", choices=c(1:2), scaling=1) %>% 
+  as_tibble() %>% 
+  bind_cols(meta_all, .)
+summary(proj)
+
+
+## Correlation between PCs ----
+#--------------------------------------------------------------------------#
+proj <- proj %>% left_join(sub_proj)
+
+#hist(proj$PC1)
+#hist(proj$PC2)
+#hist(proj$sub_PC1)
+#hist(proj$sub_PC2)
+
+cor.test(proj$PC1, proj$sub_PC1)
+cor.test(proj$PC2, proj$sub_PC2)
+
+cor(proj$PC1, proj$sub_PC1) ^ 2
+cor(proj$PC2, proj$sub_PC2) ^ 2
 
 
 ## Clustering of zoo profiles ----

@@ -10,6 +10,7 @@ library(multidplyr)
 library(parallel)
 library(castr)
 library(gsw)
+library(cmocean)
 
 load("data/02.ctd_raw.Rdata")
 
@@ -125,8 +126,8 @@ ctd_fix %>%
   ungroup() %>% 
   ggplot() +
   geom_path(aes(x = row, y = -depth, group = profile, color = profile), show.legend = FALSE) +
-  facet_wrap(~title, scales = "free") +
-  ggsave("plots/env/03.depth_dist_fix.png")
+  facet_wrap(~title, scales = "free")
+ggsave("plots/env/03.depth_dist_fix.png")
 
 message("Depth distribution now seems ok!")
 rm(ctd)
@@ -252,39 +253,17 @@ ctd_profiles <- ctd_bin %>%
 ctd_bin <- ctd_bin %>% filter(psampleid %in% ctd_profiles$psampleid)
 
 
-## Despike CTD data to remove outliers ----
+## Convert oxy_mass (µmol/kg) to oxy_vol (mL/L) ----
 #--------------------------------------------------------------------------#
-# Parameters for despiking:
-# - k = 7 --> window = 15 (we have 1 point per m)
-# - mult = 3.92
-# - n.max = 5
+# (see https://www.ices.dk/data/tools/Pages/Unit-conversions.aspx)
 
-cluster <- new_cluster(36) # use 36 cores
-cluster_library(cluster, "castr") # load "castr" functions onto clusters
-
-ctd_despike <- ctd_bin %>%
-  group_by(title, profile, lat, lon, datetime, psampleid) %>%
-  partition(cluster) %>% 
+# For UVP5hd GreenEdge 2016 and UVP5 MALINA 2009, values in oxy_mass (µmol/kg) are actually oxy_vol (mL/L)
+ctd_oxy <- ctd_bin %>% 
+  # Correct oxy_mass to oxy_vol for GreenEdge 2016 and UVP5 MALINA 2009
   mutate(
-    temp     = despike(temp,     k = 7, mult = 3.92 , n.max = 5),
-    sal      = despike(sal,      k = 7, mult = 3.92 , n.max = 5),
-    oxy_mass = despike(oxy_mass, k = 7, mult = 3.92 , n.max = 5),
-    oxy_vol  = despike(oxy_vol,  k = 7, mult = 3.92 , n.max = 5),
-    chla     = despike(chla,     k = 7, mult = 3.92 , n.max = 5)
-    ) %>% 
-  collect() %>% 
-  ungroup() %>% 
-  replace(., is.na(.), NA)
-rm(ctd_bin)
-
-
-## Compute new variables: density and AOU ----
-#--------------------------------------------------------------------------#
-# Compute density from temperature and salinity
-# Convert oxy_mass (µmol/kg) to oxy_vol (mL/L) (see https://ocean.ices.dk/tools/unitconversion.aspx)
-# Compute AOU (apparent oxygen utilization) from oxy_umol
-
-ctd_dens <- ctd_despike %>% 
+    oxy_vol = ifelse(title %in% c("UVP5hd GreenEdge 2016", "UVP5 MALINA 2009"), oxy_mass, oxy_vol),
+    oxy_mass = ifelse(title %in% c("UVP5hd GreenEdge 2016", "UVP5 MALINA 2009"), NA, oxy_mass)
+  ) %>% 
   mutate(
     press = gsw_p_from_z(-depth, lat), # compute pressure
     SA = gsw_SA_from_SP(sal, press, lon, lat), # compute absolute salinity
@@ -292,48 +271,10 @@ ctd_dens <- ctd_despike %>%
     sigma = gsw_sigma0(SA, CT), # compute sigma
     oxy_ml = ifelse(is.na(oxy_vol), oxy_mass * (sigma + 1000)/1000 * 0.022391, oxy_vol), # if oxy_vol is missing, compute oxy_ml from oxy_umol
     oxy_ml = ifelse(oxy_ml < 0, 0, oxy_ml), #  set oxy_ml < 0 to 0
-    oxy_umol = oxy_ml*(1/0.022391)*1000/(sigma + 1000), # compute oxy_umol (to compute AOU) from oxy_ml 
-    aou = aou(sal, temp, oxy_umol) # compute AOU
-    ) %>% 
-  select(title, profile, lat, lon, datetime, psampleid, depth, temp, sal, sigma, chla, oxy_ml, aou) 
-rm(ctd_despike)
-
-
-## Despike newly computed variables ----
-#--------------------------------------------------------------------------#
-ctd_dens <- ctd_dens %>%
-  group_by(title, profile, lat, lon, datetime, psampleid) %>%
-  partition(cluster) %>% 
-  mutate(
-    oxy_ml = despike(oxy_ml, k = 7, mult = 3.92 , n.max = 5),
-    aou    = despike(aou,    k = 7, mult = 3.92 , n.max = 5)
-    ) %>% 
-  collect() %>% 
-  ungroup() %>% 
-  replace(., is.na(.), NA) 
-
-
-## Smooth variables ----
-#--------------------------------------------------------------------------#
-# Parameters for smooting:
-# - k = 3 --> window = 7 (we have 1 point per m)
-# - n = 5 --> smooth data 5 times
-
-ctd_smooth <- ctd_dens %>%
-  group_by(title, profile, lat, lon, datetime, psampleid) %>%
-  partition(cluster) %>% 
-  mutate(
-    temp   = smooth(temp,   k = 3, n = 5),
-    sal    = smooth(sal,    k = 3, n = 5),
-    sigma  = smooth(sigma,  k = 3, n = 5),
-    chla   = smooth(chla,   k = 3, n = 5),
-    oxy_ml = smooth(oxy_ml, k = 3, n = 5),
-    aou    = smooth(aou,    k = 3, n = 5)
-    ) %>% 
-  collect() %>% 
-  ungroup() %>% 
-  replace(., is.na(.), NA)
-rm(ctd_dens)
+    #oxy_umol = oxy_ml*(1/0.022391)*1000/(sigma + 1000), # compute oxy_umol (to compute AOU) from oxy_ml 
+  ) %>% 
+  select(title, profile, lat, lon, datetime, psampleid, depth, temp, sal, chla, oxy_ml) 
+rm(ctd_bin)
 
 
 ## Interpolate data over 1 meter bins ----
@@ -341,24 +282,23 @@ rm(ctd_dens)
 # Interpolation is done only if proportion of missing data for given variable and profile is lower than 20%
 
 # Create all 1 meter bins
-ctd_1m <- ctd_smooth %>% 
+ctd_1m <- ctd_oxy %>% 
   select(title, profile, lat, lon, datetime, psampleid, depth) %>% 
   group_by(title, profile, lat, lon, datetime, psampleid) %>% 
   complete(depth = seq(1, max(depth), by = 1)) %>% 
   ungroup() 
 
-
-ctd_use <- ctd_smooth %>% 
+ctd_use <- ctd_oxy %>% 
   group_by(title, profile, psampleid) %>% 
-  summarise_at(vars(temp, sal, sigma, chla, oxy_ml, aou), list(na_prop)) %>%
-  mutate(use = (temp < 0.2) & (sal < 0.2) & (sigma < 0.2) & (chla < 0.2) & (oxy_ml < 0.2) & (aou < 0.2))
+  summarise_at(vars(temp, sal, chla, oxy_ml), list(na_prop)) %>%
+  mutate(use = (temp < 0.2) & (sal < 0.2) & (chla < 0.2) & (oxy_ml < 0.2))
 sum(!ctd_use$use)
-# 11 profiles have too much missing data in one of their variable
+# 18 profiles have too much missing data in one of their variable
 # remove these profiles from profiles to interpolate
 ctd_use <- ctd_use %>% filter(use)
 
 # List variables to interpolate
-variables <- c("temp", "sal", "sigma", "chla", "oxy_ml", "aou")
+variables <- c("temp", "sal", "chla", "oxy_ml")
 
 
 # Run parallel interpolation
@@ -374,14 +314,14 @@ intl <- mclapply(unique(ctd_use$psampleid), function(id) {
   for (my_var in variables){
     # Compute interpolation
     # Available data
-    wi <- ctd_smooth %>% filter(psampleid == id) %>% select(depth, all_of(my_var))
+    wi <- ctd_oxy %>% filter(psampleid == id) %>% select(depth, all_of(my_var))
     
     # Run interpolation
     cint <- ci %>% 
       mutate(
         value = interpolate(x=wi$depth, y=pull(wi[my_var]) , xo=ci$depth, extrapolate = TRUE),
         variable = my_var
-        ) %>% 
+      ) %>% 
       spread(variable, value)
     
     # Join to table with other variables
@@ -396,13 +336,137 @@ intl <- mclapply(unique(ctd_use$psampleid), function(id) {
 }, mc.cores=24) # on 24 cores
 # this returns a list, recombine it into a tibble
 ctd_int <- do.call(bind_rows, intl)
-rm(ctd_smooth, ctd_1m)
+rm(ctd_oxy, ctd_1m)
+
+
+## Despike CTD data to remove outliers ----
+#--------------------------------------------------------------------------#
+# Parameters for despiking:
+# - k = 7 --> window = 15 (we have 1 point per m)
+# - mult = 3.92
+# - n.max = 5
+
+cluster <- new_cluster(36) # use 36 cores
+cluster_library(cluster, "castr") # load "castr" functions onto clusters
+
+ctd_despike <- ctd_int %>%
+  group_by(title, profile, lat, lon, datetime, psampleid) %>%
+  partition(cluster) %>% 
+  mutate(
+    temp     = despike(temp,   k = 7, mult = 3.92 , n.max = 5),
+    sal      = despike(sal,    k = 7, mult = 3.92 , n.max = 5),
+    chla     = despike(chla,   k = 7, mult = 3.92 , n.max = 5),
+    oxy_ml   = despike(oxy_ml, k = 7, mult = 3.92 , n.max = 5)
+    ) %>% 
+  collect() %>% 
+  ungroup() %>% 
+  replace(., is.na(.), NA)
+rm(ctd_int)
+
+
+## Smooth variables ----
+#--------------------------------------------------------------------------#
+# Parameters for smoothing:
+# - k = 3 --> window = 7 (we have 1 point per m)
+# - n = 5 --> smooth data 5 times
+
+ctd_smooth <- ctd_despike %>%
+  group_by(title, profile, lat, lon, datetime, psampleid) %>%
+  partition(cluster) %>% 
+  mutate(
+    temp   = smooth(temp,   k = 3, n = 5),
+    sal    = smooth(sal,    k = 3, n = 5),
+    chla   = smooth(chla,   k = 3, n = 5),
+    oxy_ml = smooth(oxy_ml, k = 3, n = 5)
+    ) %>% 
+  collect() %>% 
+  ungroup() %>% 
+  replace(., is.na(.), NA)
+rm(ctd_despike)
+
+
+## Compute new variables: density and AOU ----
+#--------------------------------------------------------------------------#
+# Compute density from temperature and salinity
+# Compute AOU (apparent oxygen utilization) from oxy_umol
+
+
+
+
+
+#gsw_o2sol_sp_pt <- function(sp, pt){
+#  # Calculates the oxygen concentration expected at equilibrium with air at
+#  # an Absolute Pressure of 101325 Pa (sea pressure of 0 dbar) including 
+#  # saturated water vapor.  This function uses the solubility coefficients 
+#  # derived from the data of Benson and Krause (1984), as fitted by Garcia 
+#  # and Gordon (1992, 1993).
+#  #
+#  # Note that this algorithm has not been approved by IOC and is not work 
+#  # from SCOR/IAPSO Working Group 127. It is included in the GSW
+#  # Oceanographic Toolbox as it seems to be oceanographic best practice.
+#  #
+#  # SP  :  Practical Salinity  (PSS-78)                         [ unitless ]
+#  # pt  :  potential temperature (ITS-90) referenced               [ dbar ]
+#  #         to one standard atmosphere (0 dbar).
+#  #
+#  # gsw_o2sol_sp_pt : solubility of oxygen in micro-moles per kg     [umol/kg]
+#  
+#  x = sp;
+#  
+#  pt68 = pt*1.00024;
+#  
+#  y = log((298.15 - pt68)/(273.15 + pt68));
+#  
+#  a0 =  5.80871; 
+#  a1 =  3.20291;
+#  a2 =  4.17887;
+#  a3 =  5.10006;
+#  a4 = -9.86643e-2;
+#  a5 =  3.80369;
+#  b0 = -7.01577e-3;
+#  b1 = -7.70028e-3;
+#  b2 = -1.13864e-2;
+#  b3 = -9.51519e-3;
+#  c0 = -2.75915e-7;
+#  
+#  o2sol = exp(a0 + y*(a1 + y*(a2 + y*(a3 + y*(a4 + a5*y))))
+#              + x*(b0 + y*(b1 + y*(b2 + b3*y)) + c0*x));
+#  
+#  return (o2sol)
+#  
+#}
+#
+#gsw_o2sol_sp_pt(sp = toto$sal, pt = toto$temp)
+#toto$oxy_ml
+#
+#
+#library(tidync)
+#file <- "data/raw/woa/woa18_all_A00_01.nc"
+#aou <- tidync(file) %>% 
+#  hyper_filter(depth = depth <= 500) %>% 
+#  hyper_tibble() %>% 
+#  select(lat, lon, depth, aou_woa = A_an) %>% 
+#  unique()
+#
+#O2sol = gsw_O2sol_SP_pt(SP,pt)
+
+ctd_dens <- ctd_smooth %>% 
+  mutate(
+    press = gsw_p_from_z(-depth, lat), # compute pressure
+    SA = gsw_SA_from_SP(sal, press, lon, lat), # compute absolute salinity
+    CT = gsw_CT_from_t(SA, temp, press), # compute conservative temperature
+    sigma = gsw_sigma0(SA, CT), # compute sigma
+    oxy_umol = oxy_ml*(1/0.022391)*1000/(sigma + 1000), # compute oxy_umol (to compute AOU) from oxy_ml 
+    aou = aou(sal, temp, oxy_umol) # compute AOU
+  ) %>% 
+  select(title, profile, lat, lon, datetime, psampleid, depth, temp, sal, sigma, chla, oxy_ml, aou) 
+rm(ctd_smooth)
 
 
 ## Bin CTD data at 5 m to match with plankton data ----
 #--------------------------------------------------------------------------#
 # Run in parallel
-ctd_5m <- ctd_int %>%
+ctd_5m <- ctd_dens %>%
   #mutate(depth = roundp(depth + 1.2, 5, f=round) + 2.5) %>% # add 1.2 m to depth to account for distance between CTD and UVP and compute closest 5 m bin
   mutate(depth = roundp(depth, 5, f=round) + 2.5) %>% # compute closest 5 m bin
   group_by(title, profile, lat, lon, datetime, psampleid, depth) %>%
@@ -413,13 +477,15 @@ ctd_5m <- ctd_int %>%
   replace(., is.na(.), NA) %>% 
   arrange(title, profile, depth)
 
+summary(ctd_5m)
+
 
 ## Compute clines ----
 #--------------------------------------------------------------------------#
 # Compute thermocline, halocline, mixed layer depth, pycnocline, deep chlorophyll maximum, euphotic depth and stratification index
 # Compute epipelagic layer depth as the maximum depth between euphotic zone and pycnocline or MLD
 
-layers <- ctd_int %>% 
+layers <- ctd_dens %>% 
   group_by(title, profile, lat, lon, datetime, psampleid) %>% # group by profile
   partition(cluster) %>% 
   summarise( # compute:
@@ -457,7 +523,7 @@ ggsave("plots/env/03.epi_histo.png")
 
 # Plot sigma profile, pyc and MLD for these profiles
 # When using pycnocline, 8 profiles have an epipelagic layer deeper than 500 m. 
-ctd_int %>% 
+ctd_dens %>% 
   filter(psampleid %in% (layers %>% filter(pyc > 500) %>% pull(psampleid))) %>% 
   left_join(layers) %>% 
   select(profile, psampleid, depth, sigma, pyc, mld) %>% 
@@ -466,8 +532,8 @@ ctd_int %>%
   geom_point(aes(x = sigma, y = -depth, group = profile), size = 0.1) +
   geom_hline(aes(yintercept = -cline_depth, color = cline)) +
   facet_wrap(~profile) +
-  ggtitle("Sigma profiles of deep pycnocline cases") +
-  ggsave("plots/env/03.sigma_profiles_deep_pyc.png")
+  ggtitle("Sigma profiles of deep pycnocline cases")
+ggsave("plots/env/03.sigma_profiles_deep_pyc.png")
 
 # This does not happen when using MLD, while the overall distribution is similar --> use epi computed with MLD
 layers <- layers %>% 
@@ -478,7 +544,7 @@ layers %>% filter(is.na(epi)) %>% summary()
 layers <- layers %>% filter(!is.na(epi))
 
 # Inspect chla profiles where Ze is 180 m (63 profiles)
-ctd_int %>% 
+ctd_dens %>% 
   filter(psampleid %in% (layers %>% filter(ze == 180) %>% pull(psampleid))) %>% 
   left_join(layers) %>% 
   select(profile, psampleid, depth, chla, ze, mld) %>% 
@@ -498,7 +564,86 @@ ggsave("plots/env/03.chla_profiles_deep_ze.png")
 #--------------------------------------------------------------------------#
 # Keep only profiles for which we were able to compute epipelagic layer depth
 ctd_5m <- ctd_5m %>% filter(psampleid %in% layers$psampleid)
-ctd_int <- ctd_int %>% filter(psampleid %in% layers$psampleid)
+ctd_1m <- ctd_dens %>% filter(psampleid %in% layers$psampleid)
+
+
+
+
+
+
+
+## Plot maps of surface data ----
+#--------------------------------------------------------------------------#
+
+ctd_5m %>% summary()
+ctd_5m %>% 
+  ggplot() +
+  geom_density(aes(x = aou))
+
+# Temp
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = temp)) +
+  scale_color_cmocean(name = "thermal") +
+  theme_minimal() +
+  coord_quickmap()
+
+# Sal
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = sal)) +
+  scale_color_cmocean(name = "haline") +
+  theme_minimal() +
+  coord_quickmap()
+
+# Sal
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = sigma)) +
+  scale_color_cmocean(name = "dense") +
+  theme_minimal() +
+  coord_quickmap()
+
+# Oxy
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = oxy_ml)) +
+  scale_color_distiller(palette = "Blues") +
+  theme_minimal() +
+  coord_quickmap()
+
+# Chla
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = chla)) +
+  scale_color_cmocean(name = "algae") +
+  theme_minimal() +
+  coord_quickmap()
+
+# AOU
+ctd_5m %>% 
+  filter(depth == 2.5) %>% 
+  ggplot() +
+  geom_polygon(aes(x = lon, y = lat, group = group), fill = "gray", data = world) +
+  geom_point(aes(x = lon, y = lat, color = aou)) +
+  scale_color_cmocean(name = "matter") +
+  theme_minimal() +
+  coord_quickmap()
+
+ctd_5m %>% 
+  group_by(title) %>% 
+  summarise(aou = mean(aou)) %>% 
+  arrange(desc(aou))
 
 
 ## Save data ----
@@ -507,7 +652,7 @@ ctd_int <- ctd_int %>% filter(psampleid %in% layers$psampleid)
 save(ctd_5m, file = "data/03.ctd_5m.Rdata")
 
 # Save interpolated CTD data on 1 meter bins
-save(ctd_int, file = "data/03.ctd_int.Rdata")
+save(ctd_1m, file = "data/03.ctd_1m.Rdata")
 
 # Save layers data
 save(layers, file = "data/03.layers.Rdata")

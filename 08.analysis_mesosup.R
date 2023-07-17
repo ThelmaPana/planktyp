@@ -10,6 +10,7 @@ library(vegan)
 library(ggrepel)
 library(grid)
 library(gridExtra)
+library(cmocean)
 
 load("data/06.all_data.Rdata")
 
@@ -25,15 +26,18 @@ message(nrow(subset), " profiles in mesosup layer")
 #n_target_null <- 7
 
 n_min <- 25
-n_target_max <- 10
-n_target_env <- 14
-n_target_null <- 9
+n_target_max <- 12
+n_target_env <- 12
+n_target_null <- 11
+
+seed <- 10 # for reproducibility
 
 ## Create a nice color scale
-# - group 1 is copepods --> red/orange #fc8d62
-# - group 2 is mixed --> blue #2c7fb8
-# - group 3 is phaeodaria --> dark green #66c2a5
-my_colors <- c("#fc8d62", "#2c7fb8", "#66c2a5")
+# - group 1 is phaeodaria --> dark green #66c2a5
+# - group 2 is copepods --> red/orange #fc8d62
+# - group 3 is mixed --> blue #2c7fb8
+my_colors <- c("#66c2a5", "#fc8d62", "#2c7fb8")
+
 
 ## Prepare data ----
 #--------------------------------------------------------------------------#
@@ -54,15 +58,18 @@ env <- select(subset, temp:kd490) %>%
 zoo <- select(subset, Acantharea:Trichodesmium)
 # Check classes with only zeros
 cat("Groups with no organisms for this layer:", zoo[colSums(zoo) == 0] %>% names)
+#zoo <- zoo %>% select(-Nostocales)
 
 # Hellinger transformation
 zoo_hel <- tibble(decostand(zoo, "hellinger"))
+#zoo_hel <- tibble(decostand(zoo, method = "chi.square"))
 
 
 ## Run PCA ----
 #--------------------------------------------------------------------------#
 # Run PCA
 pca <- rda(zoo_hel) # don't scale data because we use Hellinger transformation
+#biplot(pca, display = c("sites", "species"), type = c("text", "points"))
 
 # Fit standardized env data on PCA axes
 ef <- envfit (pca ~ ., data = env, perm = 999, na.rm = T, choices=c(1:5))
@@ -94,10 +101,26 @@ nclust <- 3
 rect.hclust(clust_zoo, k=nclust, border=c("#fc8d62", "#66c2a5", "#2c7fb8"))
 dev.off()
 # Add clusters to table of individuals
-ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = nclust))
+ind_clust$clust_zoo <- as.factor(cutree(clust_zoo, k = 3)) 
+# Reorder groups
+ind_clust <- ind_clust %>% 
+  left_join(
+    tibble(
+      clust_zoo = c(2, 3, 1) %>% as_factor(),
+      clust_zoo_new = c(3, 1, 2) %>% as_factor()
+    )
+  ) %>% 
+  select(-clust_zoo) %>% 
+  rename(clust_zoo = clust_zoo_new)
+
+
+
+inertie <- sort(clust_zoo$height, decreasing = TRUE)
+plot(inertie[1:20], type = "s", xlab = "Nombre de classes", ylab = "Inertie")
+diff(inertie[1:10])
 
 # Save plot for paper
-svg(file = "plots/paper/08.plankton_dendrogram.svg", width = 6, height = 4)
+png(file = "plots/paper/08.plankton_dendrogram.png", width = 8, height = 5, units = "in", res = 300)
 plot(clust_zoo, hang = -1, main = "", xlab = "", sub = "", labels = F)
 nclust <- 3
 rect.hclust(clust_zoo, k=nclust, border=c("#fc8d62", "#66c2a5", "#2c7fb8"))
@@ -116,6 +139,9 @@ ind_clust %>%
   scale_y_continuous(expand = c(0,0))
 ggsave(file = "plots/analysis/mesosup/08.plankton_clusters_profile_nb.png")
 
+# Save clusters
+save(ind_clust, file="data/08.mesosup_profiles_cluster.Rdata")
+
 
 ## Prepare PCA data for plots ----
 #--------------------------------------------------------------------------#
@@ -128,8 +154,8 @@ eig <- as.data.frame(t(summary(eigenvals(pca)))) %>%
 
 # Variance explained by first 2 PC
 eig %>% slice(1:2) %>% summarise_if(is.numeric, sum)
-# and by first 4 PC
-eig %>% slice(1:4) %>% summarise_if(is.numeric, sum)
+# and by first 5 PC
+eig %>% slice(1:5) %>% summarise_if(is.numeric, sum)
 
 # Extract PCA scores of profiles for plots (scaling 2)
 ind_plot <- vegan::scores(pca, display="sites", choices=c(1:5), scaling=2) %>% 
@@ -205,7 +231,7 @@ ggplot() +
   # Labels for species with high contribution
   geom_label_repel(aes(x = PC1, y = PC2, label = variable), data = filter(var_plot, disp12), fill="white") +
   # Segments for projected environmental data
-  geom_segment(aes(x = orig, y = orig, xend = k*PC1, yend = k*PC2), data = env_proj, colour = "grey40", arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = orig, y = orig, xend = k*PC1, yend = k*PC2), data = env_proj, colour = "grey40", arrow = arrow(length = unit(0.15, "cm"), angle = 25)) +
   # Labels for projected environmental data
   geom_text(aes(x = k*PC1, y = k*PC2, label = variable), data = env_proj, colour = "grey40", hjust=ifelse(env_proj$PC1>0, -0.05, 1.05)) +
   # Fixed ratio between axes
@@ -235,6 +261,7 @@ ggplot() +
   # Bigger points in the legend, legend title on top
   guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) 
 ggsave(file = "plots/analysis/mesosup/08.plankton_pca_biplot_1_2.png")
+ggsave(file = "plots/paper/08.plankton_pca_biplot_1_2.pdf", width = 166, height = 123, unit = "mm", dpi = 300)
 
 
 ## Biplot PCA axes 2-3 ----
@@ -284,7 +311,7 @@ ggplot() +
   # Bigger points in the legend
   guides(colour = guide_legend(override.aes = list(size=3)))
 ggsave(file = "plots/analysis/mesosup/08.plankton_pca_biplot_2_3.png")
-ggsave(file = "plots/paper/08.plankton_pca_biplot_2_3.svg")
+
 
 ## Plot map of plankton clusters ----
 #--------------------------------------------------------------------------#
@@ -295,7 +322,7 @@ ind_plot %>%
   # Map coordinates
   coord_quickmap() +
   # Points for profiles coordinates with color according to plankton cluster
-  geom_point(aes(x = lon, y = lat, color = clust_zoo), size = 1) +
+  geom_point(aes(x = lon, y = lat, color = clust_zoo), size = 1, alpha = 0.8, shape=1) +
   # Nice theme
   theme_minimal() +
   # Use same color palette as for PCA biplot
@@ -318,7 +345,7 @@ ind_plot %>%
   guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) +
   ggtitle("Map of mesosup plankton clusters")
 ggsave(file = "plots/analysis/mesosup/08.plankton_clusters_map.png")
-ggsave(file = "plots/paper/08.plankton_clusters_map.svg", width = 8, height = 5)
+ggsave(file = "plots/paper/08.plankton_clusters_map.pdf", width = 166, height = 123, unit = "mm", dpi = 300)
 
 
 ## Plot clusters composition ----
@@ -343,20 +370,49 @@ comp <- bind_cols(zoo, ind_clust) %>%
 
 comp %>% 
   ggplot() +
-  # Plankton clusters on x axis, taxon on y axis, fill with proportion
-  geom_tile(aes(x = clust_zoo, y = taxon, fill = prop)) +
-  # Choose a gray color scale
-  scale_fill_distiller(palette = "Greys", direction = 1, limits = c(0,1)) +
-  # Minimal theme
-  theme_minimal() +
-  # Remove background grid
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  # Reorder taxon
-  scale_y_discrete(limits = rev(levels(comp$taxon))) +
-  # Rename axes and legend
-  labs(x = "Plankton clusters", y = "Taxon", fill = "Proportion") +
-  ggtitle("Composition of mesosup plankton clusters")
+  geom_col(aes(x = taxon, y = prop, fill = clust_zoo), position = "dodge") +
+  #scale_x_discrete(limits = rev(levels(comp$taxon))) +
+  theme_classic() +
+  # rotate x axis text
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = c(0.025, 0.75),
+    legend.justification = c("left", "bottom"),
+    legend.background = element_rect(fill="white", size=0, linetype="solid"),
+    legend.direction = "horizontal",
+  ) +
+  # remove white space on y axis
+  scale_y_continuous(expand = c(0,0), limits = c(0,1), trans = "sqrt") +
+  scale_fill_manual(values = my_colors) +
+  # Axes labels
+  ggtitle("Epipelagic clusters composition composition") +
+  labs(x = "Taxonomic group", y = "Proportion", fill = "Plankton \nCluster") 
 ggsave(file = "plots/analysis/mesosup/08.plankton_clusters_composition.png")
+ggsave(file = "plots/paper/08.plankton_clusters_composition.pdf", width = 166, height = 68, unit = "mm", dpi = 300)
+
+
+## Diurnal and seasonal effects ----
+#--------------------------------------------------------------------------#
+## Diurnal
+# RDA
+rda_dn <- rda(zoo_hel ~ day_night, data=meta, scale = F)
+# Anova
+anov <- anova(rda_dn, permutations=how(nperm=999))
+# Compute R square
+r_square <- RsquareAdj(rda_dn)
+R_dn <- r_square$r.squared
+p_dn <- anov$`Pr(>F)`[1]
+table(meta$day_night)
+
+## Seasonal
+# RDA
+rda_seas <- rda(zoo_hel ~ prod, data=meta, scale = F)
+# Anova
+anov <- anova(rda_seas, permutations=how(nperm=999))
+# Compute R square
+r_square <- RsquareAdj(rda_seas)
+R_seas <- r_square$r.squared
+p_seas <- anov$`Pr(>F)`[1]
 
 
 ## Compute number of modalities to aim for in partitionings ----
@@ -430,21 +486,20 @@ message("We should aim for ~ 12 modalities in other partitionings.")
 #--------------------------------------------------------------------------#
 # Clustering for maximal model in generated with plankton data themselves.
 # It shows the maximum part of variance that can be explained by a partitioning with n modalities.
-# Use same clustering as before but change number of clusters
 
-png(file = "plots/analysis/mesosup/08.plankton_dendrogram_max_model.png", width = 9.79, height = 7.96, units = "in", res = 300)
-plot(clust_zoo, main = "Cluster dendrogram on plankton data in mesosup layer for max model")
-# Choose number of clusters
-nclust <- n_target_max
-# Plot clusters
-rect.hclust(clust_zoo, k=nclust)
-dev.off()
-# Add clusters to table of individuals
-ind_clust$mod_max <- as.factor(cutree(clust_zoo, k = nclust))
+
+# Kmeans for maximal model
+set.seed(seed) # for reproducibility
+kmeans_max <- kmeans(ind_clust %>% select(PC1:PC5), centers = n_target_max)
+table(kmeans_max$cluster)
+ind_clust$mod_max <- as.factor(kmeans_max$cluster)
 
 # And join to table of selected profiles
 counts <- counts %>% left_join(ind_clust %>% select(psampleid, mod_max))
 message(nrow(counts %>% count(mod_max) %>% filter(n > n_min)), " modalities for maximal model")
+
+
+
 
 # Remove modalities with not enough profiles
 counts <- counts %>% 
@@ -453,8 +508,13 @@ counts <- counts %>%
   select(-n)
 message(nrow(counts), " profiles left")
 
+
 ## Generate clustering on immediate environment ----
 #--------------------------------------------------------------------------#
+# Colours for env clusters
+col_env <- c("#ebac23", "#b80058", "#008cf9", "#006e00", "#00bbad", "#d163e6", "#b24502", "#ff9287", "#5954d6", "#00c6f8", "gray50")
+
+
 # PCA on env data
 pca_env <- rda(env) # no need to scale because we already did it
 
@@ -481,15 +541,6 @@ eig_env %>%
   scale_y_continuous(labels=scales::percent, expand = c(0,0))
 ggsave(file = "plots/analysis/mesosup/08.env_pca_variance_explained.png")
 
-# Biplot of env PCA
-png(file = "plots/analysis/mesosup/08.env_pca_biplot_1_2.png", width = 9.79, height = 7.96, units = "in", res = 300)
-biplot(pca_env, xlab = "", ylab = "",)
-orditorp(pca_env, display="sp")
-title(
-  xlab = paste0("PC 1", " (", format(round(100*eig_env$prop_exp[1], 2), nsmall = 2), "%)"), 
-  ylab = paste0("PC 2", " (", format(round(100*eig_env$prop_exp[2], 2), nsmall = 2), "%)"), 
-) 
-dev.off()
 
 # Extract scores in scaling 1 for clustering on env data
 # Use 5 firts PCs
@@ -497,24 +548,35 @@ env_ind_clust <- vegan::scores(pca_env, display="sites", choices=c(1:5), scaling
   as_tibble() %>% 
   bind_cols(meta, .)
 
-# Compute euclidean distance
-env_euc_dist <- dist(select(env_ind_clust, c(PC1:PC5)), method = "euclidian")
-# Compute hierarchical clustering with Ward method
-clust_env <- hclust(env_euc_dist, method = "ward.D2")
-# Plot dendrogram
-png(file = "plots/analysis/mesosup/08.env_dendrogram.png", width = 9.79, height = 7.96, units = "in", res = 300)
-plot(clust_env, main = "Cluster dendrogram env data mesosup layer")
-# Choose number of clusters
-nclust <- n_target_env # target a little higher to have enough groups after ignoring groups with not enough profiles 
-# Plot clusters
-rect.hclust(clust_env, k=nclust)
-dev.off()
+## HAC
+## Compute euclidean distance
+#env_euc_dist <- dist(env_ind_clust %>% select(PC1:PC5) , method = "euclidian") # %>% filter(psampleid %in% counts$psampleid) 
+## Compute hierarchical clustering with Ward method
+#clust_env <- hclust(env_euc_dist, method = "ward.D2")
+#
+#
+## Plot dendrogram
+##png(file = "plots/paper/08.env_dendrogram.png", width = 166, height = 100, units = "mm", res = 300)
+#plot(clust_env, main = "", xlab = "", sub = "", labels = F, hang = -1)
+## Choose number of clusters
+#n_target_env <- 11
+#nclust <- n_target_env # target a little higher to have enough groups after ignoring groups with not enough profiles 
+## Plot clusters
+#rect.hclust(clust_env, k=nclust) #, which = c(1:4, 6:11), border=col_env
+##dev.off()
 # Add clusters to table of individuals
-ind_clust$clust_env <- as.factor(cutree(clust_env, k = nclust))
+#ind_clust$clust_env <- as.factor(JLutils::cutree.order(clust_env, k = nclust))
+
+# Kmeans
+set.seed(seed) # for reproducibility
+kmeans_env <- kmeans(env_ind_clust %>% select(PC1:PC5), centers = n_target_env)
+table(kmeans_env$cluster)
+ind_clust$clust_env <- as.factor(kmeans_env$cluster)
 
 # And join to table of selected profiles
 counts <- counts %>% left_join(ind_clust %>% select(psampleid, clust_env))
 message(nrow(counts %>% count(clust_env) %>% filter(n > n_min)), " modalities for env clustering")
+table(counts$clust_env)
 
 # Remove modalities with not enough profiles
 counts <- counts %>% 
@@ -522,6 +584,114 @@ counts <- counts %>%
   filter(n > n_min) %>% 
   select(-n)
 message(nrow(counts), " profiles left")
+
+# Renumber clusters
+new_cl_names <- tibble(clust_env = unique(counts$clust_env)) %>% mutate(new_name = as.factor(1:n()))
+ind_clust <- ind_clust %>% 
+  mutate(clust_env = as.factor(ifelse(psampleid %in% counts$psampleid, clust_env, NA))) %>% 
+  left_join(new_cl_names) %>% 
+  select(-clust_env) %>% 
+  rename(clust_env = new_name)
+
+# Count profiles per cluster
+ind_clust %>% 
+  count(clust_env) %>% 
+  mutate(n = ifelse(n > 100, 100, n)) %>% 
+  ggplot() +
+  geom_col(aes(x = clust_env, y = n, fill = clust_env)) +
+  ylim(c(0,100)) +
+  scale_fill_manual(values = col_env) +
+  geom_hline(yintercept = 25)
+
+
+# Plot PCA
+# Extract PCA scores of profiles for plots (scaling 2)
+ind_plot <- vegan::scores(pca_env, display="sites", choices=c(1:5), scaling=2) %>% 
+  as_tibble() %>% 
+  bind_cols(meta, .) %>% 
+  left_join(ind_clust %>% select(-c(PC1:PC5))) # ignore coordinates in scaling 1 
+
+# Extract variables scores in scaling 2
+var_plot <- vegan::scores(pca_env, display="species", choices=c(1:5), scaling=2) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "variable") %>% 
+  as_tibble() %>% 
+  mutate(orig = 0)
+
+ggplot() +
+  # Vertical and horizontal lines
+  geom_vline(xintercept = 0, color = "gray") +
+  geom_hline(yintercept = 0, color = "gray") +
+  # Segments for projected environmental data
+  geom_segment(aes(x = orig, y = orig, xend = PC1, yend = PC2), data = var_plot, colour = "grey40", arrow = arrow(length = unit(0.15, "cm"), angle = 25)) +
+  # Labels for projected environmental data
+  geom_text(aes(x = PC1, y = PC2, label = variable), data = var_plot, colour = "grey40", hjust=ifelse(var_plot$PC1>0, -0.05, 1.05)) +
+  # Points for individuals (i.e. profiles) with color according to plankton cluster
+  geom_point(aes(x = PC1, y = PC2, colour = clust_env), data = ind_plot, alpha = 0.5, size = 0.5) +
+  # Fixed ratio between axes
+  coord_fixed() +
+  # Add a little padding and remove breaks
+  scale_x_continuous(expand = c(.1, 0), breaks = 0) +
+  scale_y_continuous(breaks = 0) +
+  # Nice color palette
+  #scale_color_brewer(palette = "Set2") +
+  scale_color_manual(values = col_env) +
+  # Put explained variance in axes names
+  xlab(paste0("PC 1", " (", format(round(100*eig$prop_exp[1], 1), nsmall = 1), "%)")) +
+  ylab(paste0("PC 2", " (", format(round(100*eig$prop_exp[2], 1), nsmall = 1), "%)")) +
+  # Legend title
+  labs(color = "Environmental clusters") +
+  # Plot title
+  ggtitle("PCA biplot of mesopelagic profiles, PC1 and PC2") +
+  # Nice theme
+  theme_minimal() +
+  # Legend position at the bottom
+  #theme(legend.position = "bottom") +
+  # Legend inside plot
+  theme(
+    legend.position = c(.95, .95),
+    legend.justification = c("right", "top"),
+    legend.direction = "horizontal",
+  ) +
+  # Bigger points in the legend, legend title on top
+  guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) 
+ggsave(file = "plots/analysis/meso/08.env_pca_biplot_1_2.png")
+ggsave(file = "plots/paper/08.env_pca_biplot_1_2.pdf", width = 166, height = 123, unit = "mm", dpi = 300)
+
+
+# Plot map of clusters
+ind_clust %>% 
+  ggplot() +
+  # Map background
+  geom_polygon(data = world, aes(x = lon, y = lat, group = group), fill = "gray") +
+  # Map coordinates
+  coord_quickmap() +
+  # Points for profiles coordinates with color according to plankton cluster
+  geom_point(aes(x = lon, y = lat, color = clust_env), size = 1, alpha = 0.8, shape=1) +
+  # Nice theme
+  theme_minimal() +
+  # Use same color palette as for PCA biplot
+  #scale_color_brewer(palette = "Set2") +
+  scale_color_manual(values = col_env) +
+  # Rename axes
+  labs(x = "Longitude", y = "Latitude", color = "Plankton clusters") +
+  # Legend at the bottom
+  #theme(legend.position="bottom") +
+  # Legend inside plot
+  theme(
+    legend.position = c(0.025, 0.05),
+    legend.justification = c("left", "bottom"),
+    legend.background = element_rect(fill="white", size=0, linetype="solid"),
+    legend.direction = "horizontal",
+  ) +
+  # Remove white spaces on the border
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  # Bigger points in the legend, legend title on top
+  guides(colour = guide_legend(override.aes = list(size=2), title.position="top")) +
+  ggtitle("Map of mesopelagic environmental clusters")
+ggsave(file = "plots/analysis/meso/08.env_clusters_map.png")
+ggsave(file = "plots/paper/08.env_clusters_map.pdf", width = 166, height = 123, unit = "mm", dpi = 300)
 
 
 ## Generate random groups for a null model ----
@@ -636,7 +806,7 @@ models <- tibble(short = short_names, full = full_names)
 
 # Initiate empty list to store results
 list_mod <- c()
-list_Radj <- c()
+list_R <- c()
 list_p <- c()
 
 # Loop over partitionings
@@ -650,7 +820,7 @@ for (mod in models$short){
   
   # Store results in lists
   list_mod <- c(list_mod, anov$Df[1]+1)
-  list_Radj <- c(list_Radj, r_square$adj.r.squared)
+  list_R <- c(list_R, r_square$r.squared)
   list_p <- c(list_p, anov$`Pr(>F)`[1])
 }
 
@@ -658,11 +828,11 @@ for (mod in models$short){
 anosim_res <- 
   tibble(
     modalities = list_mod,
-    Radj = list_Radj,
+    R = list_R,
     p = list_p
   ) %>% 
   bind_cols(models, .) %>% 
-  mutate(prop_exp = Radj / max(Radj))
+  mutate(prop_exp = R / max(R))
 anosim_res
 
 # Plot results
@@ -690,8 +860,8 @@ ggsave(file = "plots/analysis/mesosup/08.partitioning_anosim.png")
 # For each saved table, generate a column with layer name
 
 # Anosim results
-anosim_res <- anosim_res %>% mutate(layer = study_layer) %>% 
-  save(anosim_res, file="data/08.mesosup_anosim.Rdata")
+anosim_res <- anosim_res %>% mutate(layer = study_layer)
+save(anosim_res, file="data/08.mesosup_anosim.Rdata")
 
 # Plankton composition of plankton clusters
 comp <- comp %>% mutate(layer = study_layer)
@@ -704,3 +874,84 @@ save(groups, file="data/08.mesosup_partitionings.Rdata")
 # Plankton PCA eigenvalues
 eig <- eig %>% mutate(layer = study_layer)
 save(eig, file="data/08.mesosup_plankton_eigvals.Rdata")
+
+
+## Seasonality at CCE and Peruvian upwelling ----
+#--------------------------------------------------------------------------#
+cce <- ind_clust %>% filter(str_detect(title, "CCE"))
+
+cce %>% 
+  mutate(
+    month = month(datetime),
+    year = year(datetime) %>% as.factor()
+    ) %>% 
+  ggplot() +
+  geom_jitter(aes(x = month, y = clust_zoo, color = year), width = 0.25, height = 0.25)
+
+m135 <- ind_clust %>% filter(str_detect(title, "m135"))
+
+m135 %>% 
+  mutate(
+    month = month(datetime),
+  ) %>% 
+  ggplot() +
+  geom_jitter(aes(x = month, y = clust_zoo), width = 0.25, height = 0.25)
+
+
+## Latitudinal temperature gradient in the mesosup layer ----
+#--------------------------------------------------------------------------#
+all_data %>% 
+  filter(layer == "mesosup") %>% 
+  ggplot() +
+  geom_polygon(data = world, aes(x = lon, y = lat, group = group), fill = "gray") +
+  geom_point(aes(x = lon, y = lat, color = temp)) +
+  #scale_color_viridis_c()  +
+  scale_color_cmocean(name = "thermal") +
+  coord_quickmap() +
+  theme_minimal()
+
+
+## Diversity index in mesosup layer ----
+#--------------------------------------------------------------------------#
+
+div_mesosup <- all_data %>% 
+  filter(layer == "mesosup") %>% 
+  mutate(shannon = diversity(zoo))
+
+div_mesosup %>% 
+  ggplot() +
+  geom_polygon(data = world, aes(x = lon, y = lat, group = group), fill = "gray") +
+  geom_point(aes(x = lon, y = lat, color = temp)) +
+  scale_color_cmocean(name = "thermal") +
+  coord_quickmap() +
+  theme_minimal()
+
+
+div_mesosup %>% 
+  ggplot() +
+  geom_polygon(data = world, aes(x = lon, y = lat, group = group), fill = "gray") +
+  geom_point(aes(x = lon, y = lat, color = shannon)) +
+  scale_color_viridis_c()  +
+  coord_quickmap() +
+  theme_minimal()
+
+div_mesosup %>% 
+  ggplot(aes(x = lat, y = shannon, color = temp)) +
+  geom_point() +
+  geom_smooth() +
+  scale_color_cmocean(name = "thermal") +
+  coord_flip() +
+  theme_minimal()
+
+div_mesosup %>% 
+  ggplot(aes(x = lat, y = temp, color = temp)) +
+  geom_point() +
+  geom_smooth() +
+  scale_color_cmocean(name = "thermal") +
+  coord_flip() +
+  theme_minimal()
+
+div_mesosup %>% 
+  left_join(ind_plot) %>% 
+  ggplot() +
+  geom_boxplot(aes(x = clust_zoo, y = shannon))

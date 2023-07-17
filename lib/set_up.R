@@ -43,6 +43,7 @@ deg2rad <- function(deg){(deg * pi) / (180)}
 # Compute AOU
 aou <- function(sal, temp, oxy){
   ## Compute apparent oxygen utilization
+  # From https://www.mbari.org/products/research-software/matlab-scripts-oceanographic-calculations/
   # AOU is computed as the difference between O2 concentration at saturation and observed O2 concentration
   # Input
   #     - sal : salinity
@@ -57,7 +58,7 @@ aou <- function(sal, temp, oxy){
   
   # Compute oxygen concentration (mL/Kg) at saturation 
   osat <-  -177.7888 + 255.5907 / temp1 + 146.4813 * log(temp1) - 22.2040 * temp1
-  osat <- osat + sal * (-0.037362 + temp * (0.016504 - 0.0020564 * temp))
+  osat <- osat + sal * (-0.037362 + temp1 * (0.016504 - 0.0020564 * temp1))
   osat <-  exp(osat)
   
   # Convert from mL/Kg to µmol/kg
@@ -83,3 +84,27 @@ circle_fun <- function(center = c(0,0), diameter = 1, npoints = 100){
 
 # Count modalities of a qualitative variable
 count_mods <- function(x){length(unique(x))}
+
+cos2vars <- function(PC, Y=NULL) {
+  if(any(class(PC) == "cca")) {
+    Y <- PC$CA$Xbar
+    PC <- scores(PC, scaling = 1, display = "sites", choices = 1:ncol(PC$CA$u))
+  }
+  round(cor(Y,PC)^2, 4)
+}
+
+
+cos2obs <- function(PC, Y=NULL) {
+  if(any(class(PC) == "cca")) {
+    Y <- PC$CA$Xbar
+    #         PC <- princomp(Y)$scores
+    PC <- scores(PC, display = "sites", scaling = 1, choices = 1:ncol(PC$CA$u)) * attr(summary(PC), "const")
+  }
+  Yc <- scale(Y, scale = FALSE)
+  round(((PC^2) / rowSums(Yc^2)), 4)
+}
+
+cos2 <- function(PC, Y = NULL) {
+  list(vars = cos2vars(PC, Y), 
+       obs = cos2obs(PC, Y))
+}
